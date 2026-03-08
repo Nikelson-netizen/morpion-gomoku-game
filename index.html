@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morpions / Gomoku</title>
+
+  <link rel="shortcut icon" href="./logo.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page-overlay">
+    <div class="container">
+
+      <header class="top-header">
+        <img src="logo.png" alt="Logo Gomoku" class="logo">
+        <h1>Jeu de morpion à 5 / Gomoku 5-in-a-row</h1>
+        <h2 id="status">Turn : Black</h2>
+      </header>
+
+      <section class="controls">
+        <div class="control-group">
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="pvp">2 Players</option>
+            <option value="ai">Play vs AI</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="aiLevel">AI Level</label>
+          <select id="aiLevel">
+            <option value="1">Level 1 - Easy</option>
+            <option value="2">Level 2</option>
+            <option value="3">Level 3</option>
+            <option value="4">Level 4</option>
+            <option value="5">Level 5 - Hard</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="firstPlayer">First</label>
+          <select id="firstPlayer">
+            <option value="human" selected>Human</option>
+            <option value="ai">IA</option>
+          </select>
+        </div>
+
+        <div class="control-group button-group">
+          <label class="hidden-label">Action</label>
+          <button id="reset" type="button">Restart</button>
+        </div>
+      </section>
+
+      <main class="game-area">
+        <div id="board" aria-label="Plateau de jeu Gomoku"></div>
+      </main>
+
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
