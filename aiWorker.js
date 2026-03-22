@@ -1,4 +1,6 @@
-self.postMessage({ type: "inited" });
+let WORKER_SIZE = 15;
+let WORKER_AI = "white";
+let WORKER_HUMAN = "black";
 
 const DIRS = [
   [1, 0],
@@ -285,6 +287,7 @@ function createDoubleThreat(grid, index, player, size) {
   grid[index] = null;
   return false;
 }
+
 function analyzeOpenLinesForMove(grid, index, player, size) {
   if (grid[index] != null) return null;
 
@@ -344,44 +347,44 @@ function bestHeuristicMove(grid, ai, human, size, level) {
     if (grid[i] != null) continue;
 
     const attack = scoreMove(grid, i, ai, size);
-const defend = scoreMove(grid, i, human, size);
+    const defend = scoreMove(grid, i, human, size);
 
-const aiLines = analyzeOpenLinesForMove(grid, i, ai, size);
-const huLines = analyzeOpenLinesForMove(grid, i, human, size);
+    const aiLines = analyzeOpenLinesForMove(grid, i, ai, size);
+    const huLines = analyzeOpenLinesForMove(grid, i, human, size);
 
-let total = 0;
+    let total = 0;
 
-if (level === 1) {
-  total = attack * 0.55 + defend * 0.45;
-} else if (level === 2) {
-  total = attack * 0.90 + defend * 1.05;
-} else if (level === 3) {
-  total = attack * 1.20 + defend * 1.10;
-} else if (level === 4) {
-  total = attack * 1.25 + defend * 1.20;
-} else {
-  total = attack * 1.35 + defend * 1.25;
-}
+    if (level === 1) {
+      total = attack * 0.55 + defend * 0.45;
+    } else if (level === 2) {
+      total = attack * 0.90 + defend * 1.05;
+    } else if (level === 3) {
+      total = attack * 1.20 + defend * 1.10;
+    } else if (level === 4) {
+      total = attack * 1.25 + defend * 1.20;
+    } else {
+      total = attack * 1.35 + defend * 1.25;
+    }
 
-if (aiLines) {
-  total += aiLines.openTwo * (level >= 5 ? 14000 : level >= 4 ? 9000 : 2500);
-  total += aiLines.openThree * (level >= 5 ? 140000 : level >= 4 ? 90000 : 25000);
-  total += aiLines.openFour * (level >= 5 ? 1400000 : level >= 4 ? 900000 : 250000);
+    if (aiLines) {
+      total += aiLines.openTwo * (level >= 5 ? 14000 : level >= 4 ? 9000 : 2500);
+      total += aiLines.openThree * (level >= 5 ? 140000 : level >= 4 ? 90000 : 25000);
+      total += aiLines.openFour * (level >= 5 ? 1400000 : level >= 4 ? 900000 : 250000);
 
-  if (aiLines.openTwo >= 2) {
-    total += (level >= 5 ? 60000 : level >= 4 ? 30000 : 8000);
-  }
+      if (aiLines.openTwo >= 2) {
+        total += (level >= 5 ? 60000 : level >= 4 ? 30000 : 8000);
+      }
 
-  if (aiLines.openThree >= 2) {
-    total += (level >= 5 ? 350000 : level >= 4 ? 180000 : 50000);
-  }
-}
+      if (aiLines.openThree >= 2) {
+        total += (level >= 5 ? 350000 : level >= 4 ? 180000 : 50000);
+      }
+    }
 
-if (huLines) {
-  total += huLines.openTwo * (level >= 5 ? 10000 : level >= 4 ? 7000 : 2000);
-  total += huLines.openThree * (level >= 5 ? 100000 : level >= 4 ? 70000 : 20000);
-  total += huLines.openFour * (level >= 5 ? 1000000 : level >= 4 ? 700000 : 200000);
-}
+    if (huLines) {
+      total += huLines.openTwo * (level >= 5 ? 10000 : level >= 4 ? 7000 : 2000);
+      total += huLines.openThree * (level >= 5 ? 100000 : level >= 4 ? 70000 : 20000);
+      total += huLines.openFour * (level >= 5 ? 1000000 : level >= 4 ? 700000 : 200000);
+    }
 
     if (createDoubleThreat(grid, i, ai, size)) total += 900000;
     if (createDoubleThreat(grid, i, human, size)) total += 850000;
@@ -403,33 +406,45 @@ if (huLines) {
 }
 
 self.onmessage = function (e) {
-  const { grid, ai, human, level = 1, jobId } = e.data;
+  const msg = e.data;
+
+  if (msg.type === "init") {
+    WORKER_SIZE = msg.size ?? 15;
+    WORKER_AI = msg.ai ?? "white";
+    WORKER_HUMAN = msg.human ?? "black";
+    self.postMessage({ type: "inited" });
+    return;
+  }
+
+  if (msg.type !== "think") return;
+
+  const grid = msg.grid.slice();
+  const ai = msg.ai ?? WORKER_AI;
+  const human = msg.human ?? WORKER_HUMAN;
+  const level = msg.level ?? 1;
+  const jobId = msg.jobId;
   const size = Math.sqrt(grid.length);
 
   let move = null;
 
-  // 1) gagner immédiatement
   move = findWinningMove(grid, ai, size);
   if (move != null) {
     self.postMessage({ type: "move", jobId, move });
     return;
   }
 
-  // 2) bloquer victoire immédiate
   move = findWinningMove(grid, human, size);
   if (move != null) {
     self.postMessage({ type: "move", jobId, move });
     return;
   }
 
-  // 3) premier coup
   if (countStones(grid) === 0) {
     move = centerMove(grid, size);
     self.postMessage({ type: "move", jobId, move });
     return;
   }
 
-  // 4) niveaux
   if (level === 1) {
     move = nearMove(grid, size) ?? randomMove(grid);
   } else if (level === 2) {
