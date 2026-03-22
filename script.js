@@ -201,25 +201,24 @@ function showWinner(winnerName) {
     `🎉 ${winnerName} wins the game! Score: ${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
 
   resetButton.textContent = "Play Again";
-  
+
   const shareContainer = document.getElementById("shareContainer");
-const shareBtn = document.getElementById("shareMatchBtn");
+  const shareBtn = document.getElementById("shareMatchBtn");
 
-if (shareContainer && shareBtn) {
-  shareContainer.style.display = "block";
-
-  shareBtn.onclick = () => shareMatch(winnerName);
-}
+  if (shareContainer && shareBtn) {
+    shareContainer.style.display = "block";
+    shareBtn.onclick = () => shareMatch(winnerName);
+  }
 }
 
 function updateTurnStatus() {
   if (gameOver) return;
 
   if (isWatching) {
-  status.textContent = `👀 Watching ${currentBlackName} vs ${currentWhiteName}`;
-  resetButton.style.display = "none";
-  return;
-}
+    status.textContent = `👀 Watching ${currentBlackName} vs ${currentWhiteName}`;
+    resetButton.style.display = "none";
+    return;
+  }
 
   if (modeSelect.value === "online" && myColor) {
     status.textContent =
@@ -350,6 +349,45 @@ function getWinningLine(index) {
   return null;
 }
 
+function checkWinWithLine(player) {
+  const directions = [
+    { dr: 0, dc: 1 },
+    { dr: 1, dc: 0 },
+    { dr: 1, dc: 1 },
+    { dr: 1, dc: -1 }
+  ];
+
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      const startIndex = row * size + col;
+      if (grid[startIndex] !== player) continue;
+
+      for (const { dr, dc } of directions) {
+        const line = [{ row, col, index: startIndex }];
+
+        for (let step = 1; step < 5; step++) {
+          const r = row + dr * step;
+          const c = col + dc * step;
+
+          if (r < 0 || r >= size || c < 0 || c >= size) break;
+
+          const idx = r * size + c;
+          if (grid[idx] !== player) break;
+
+          line.push({ row: r, col: c, index: idx });
+        }
+
+        if (line.length === 5) {
+          winningLine = line;
+          return line;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 // ----------------- CHAT -----------------
 let unreadCount = 0;
 
@@ -433,31 +471,25 @@ async function createShareImage(winnerName) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  // Fond général
   ctx.fillStyle = "#f5efe2";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Carte
   ctx.fillStyle = "#ffffff";
   roundRect(ctx, 35, 35, 1130, 560, 24);
   ctx.fill();
 
-  // Titre
   ctx.fillStyle = "#111827";
   ctx.font = "bold 42px Arial";
   ctx.fillText("GOMOKU ONLINE", 70, 95);
 
-  // Sous-titre
   ctx.fillStyle = "#2563eb";
   ctx.font = "bold 30px Arial";
   ctx.fillText("I came to win 🔥", 70, 145);
 
-  // Winner
   ctx.fillStyle = "#111827";
   ctx.font = "28px Arial";
   ctx.fillText(`Winner: ${winnerName}`, 70, 205);
 
-  // Score box
   ctx.fillStyle = "#f3f4f6";
   roundRect(ctx, 70, 240, 430, 110, 18);
   ctx.fill();
@@ -474,7 +506,6 @@ async function createShareImage(winnerName) {
     325
   );
 
-  // Lien
   ctx.fillStyle = "#374151";
   ctx.font = "24px Arial";
   ctx.fillText("Play now:", 70, 405);
@@ -483,12 +514,10 @@ async function createShareImage(winnerName) {
   ctx.font = "bold 24px Arial";
   ctx.fillText(window.location.origin, 70, 440);
 
-  // Bas
   ctx.fillStyle = "#6b7280";
   ctx.font = "20px Arial";
   ctx.fillText("Play free online with other players", 70, 520);
 
-  // Plateau
   const boardX = 650;
   const boardY = 95;
   const boardSizePx = 430;
@@ -520,7 +549,6 @@ async function createShareImage(winnerName) {
   const stones = shareData.stones;
   const winningOverlay = shareData.winningOverlay;
 
-  // Ligne gagnante jaune
   if (winningOverlay.length >= 2) {
     const sorted = [...winningOverlay].sort((a, b) => {
       if (a.y !== b.y) return a.y - b.y;
@@ -541,7 +569,6 @@ async function createShareImage(winnerName) {
     ctx.lineCap = "butt";
   }
 
-  // Pions
   stones.forEach((stone, index) => {
     const x = boardX + stone.x * step;
     const y = boardY + stone.y * step;
@@ -612,7 +639,7 @@ function getShareData(limit = 10) {
       row,
       col,
       player: grid[i],
-      isWinning: winningLine.some(w => w.index === i)
+      isWinning: winningLine.some((w) => w.index === i)
     });
   }
 
@@ -634,29 +661,29 @@ function getShareData(limit = 10) {
   let source = recent;
 
   if (winningLine.length > 0) {
-    const winningIndexes = winningLine.map(w => w.index);
-    const winningStones = stones.filter(s => winningIndexes.includes(s.row * size + s.col));
+    const winningIndexes = winningLine.map((w) => w.index);
+    const winningStones = stones.filter((s) => winningIndexes.includes(s.row * size + s.col));
 
     const merged = [...recent];
 
-    winningStones.forEach(ws => {
-      const exists = merged.some(m => m.row === ws.row && m.col === ws.col);
+    winningStones.forEach((ws) => {
+      const exists = merged.some((m) => m.row === ws.row && m.col === ws.col);
       if (!exists) merged.push(ws);
     });
 
     source = merged;
   }
 
-  const minRow = Math.min(...source.map(s => s.row));
-  const maxRow = Math.max(...source.map(s => s.row));
-  const minCol = Math.min(...source.map(s => s.col));
-  const maxCol = Math.max(...source.map(s => s.col));
+  const minRow = Math.min(...source.map((s) => s.row));
+  const maxRow = Math.max(...source.map((s) => s.row));
+  const minCol = Math.min(...source.map((s) => s.col));
+  const maxCol = Math.max(...source.map((s) => s.col));
 
   const rowSpan = Math.max(1, maxRow - minRow);
   const colSpan = Math.max(1, maxCol - minCol);
   const span = Math.max(rowSpan, colSpan, 4);
 
-  const mapped = source.map(s => {
+  const mapped = source.map((s) => {
     const x = ((s.col - minCol) / span) * 6 + 2;
     const y = ((s.row - minRow) / span) * 6 + 2;
 
@@ -670,51 +697,14 @@ function getShareData(limit = 10) {
     };
   });
 
-  const winningOverlay = mapped.filter(s => s.isWinning);
+  const winningOverlay = mapped.filter((s) => s.isWinning);
 
   return {
     stones: mapped,
     winningOverlay
   };
 }
-function checkWinWithLine(player) {
-  const directions = [
-    { dr: 0, dc: 1 },   // horizontal
-    { dr: 1, dc: 0 },   // vertical
-    { dr: 1, dc: 1 },   // diagonale \
-    { dr: 1, dc: -1 }   // diagonale /
-  ];
 
-  for (let row = 0; row < size; row++) {
-    for (let col = 0; col < size; col++) {
-      const startIndex = row * size + col;
-      if (grid[startIndex] !== player) continue;
-
-      for (const { dr, dc } of directions) {
-        const line = [{ row, col, index: startIndex }];
-
-        for (let step = 1; step < 5; step++) {
-          const r = row + dr * step;
-          const c = col + dc * step;
-
-          if (r < 0 || r >= size || c < 0 || c >= size) break;
-
-          const idx = r * size + c;
-          if (grid[idx] !== player) break;
-
-          line.push({ row: r, col: c, index: idx });
-        }
-
-        if (line.length === 5) {
-  winningLine = line; // 🔥 on sauvegarde la ligne gagnante
-  return line;
-}
-      }
-    }
-  }
-
-  return null;
-}
 // ----------------- GAME FLOW -----------------
 function handleMove(i) {
   if (gameOver) return;
@@ -724,7 +714,9 @@ function handleMove(i) {
   if (modeSelect.value === "online") {
     if (!socket) return;
     if (!myColor) return;
+
     if (currentPlayer !== myColor) {
+      alert("Not your turn");
       status.textContent = "Not your turn";
 
       setTimeout(() => {
@@ -750,6 +742,11 @@ function handleMove(i) {
   const line = getWinningLine(i);
   if (line) {
     gameOver = true;
+    winningLine = line.map((idx) => {
+      const [row, col] = rcOf(idx);
+      return { row, col, index: idx };
+    });
+
     lockBoard();
     line.forEach((idx) => cells[idx].classList.add("winner"));
 
@@ -780,6 +777,11 @@ function handleAIMove(i) {
   const line = getWinningLine(i);
   if (line) {
     gameOver = true;
+    winningLine = line.map((idx) => {
+      const [row, col] = rcOf(idx);
+      return { row, col, index: idx };
+    });
+
     lockBoard();
     line.forEach((idx) => cells[idx].classList.add("winner"));
     status.textContent = "🎉 Winner : AI (White)";
@@ -806,7 +808,7 @@ function maybePlayAI() {
       2: 200,
       3: 320,
       4: 450,
-      5: 650,
+      5: 650
     })[level] || 320;
 
   worker.postMessage({
@@ -816,7 +818,7 @@ function maybePlayAI() {
     ai: AI_PLAYER,
     human: HUMAN_PLAYER,
     level,
-    thinkMs,
+    thinkMs
   });
 }
 
@@ -966,20 +968,20 @@ function initSocket() {
   });
 
   socket.on("receiveMessage", ({ name, message }) => {
-  addChatMessage(name, message);
+    addChatMessage(name, message);
 
-  const myName = document.getElementById("playerName")?.value?.trim();
+    const myName = document.getElementById("playerName")?.value?.trim();
 
-  if (name !== myName) {
-    unreadCount++;
+    if (name !== myName) {
+      unreadCount++;
 
-    const badge = document.getElementById("chatBadge");
-    if (badge) {
-      badge.style.display = "inline-block";
-      badge.textContent = unreadCount;
+      const badge = document.getElementById("chatBadge");
+      if (badge) {
+        badge.style.display = "inline-block";
+        badge.textContent = unreadCount;
+      }
     }
-  }
-});
+  });
 
   socket.on("onlinePlayers", (players) => {
     renderOnlinePlayers(players);
@@ -1014,7 +1016,8 @@ function initSocket() {
       return;
     }
 
-    if (typeof message === "string" && message.toLowerCase().includes("turn")) {
+    if (message === "Not your turn") {
+      alert("Not your turn");
       status.textContent = "Not your turn";
 
       setTimeout(() => {
@@ -1088,6 +1091,7 @@ function initSocket() {
 
     currentPlayer = serverCurrentPlayer || "black";
     gameOver = false;
+    winningLine = [];
     applyBoardFromServer(matchBoard || Array(N).fill(null));
 
     document.body.classList.toggle("white-turn", currentPlayer === "white");
@@ -1133,6 +1137,11 @@ function initSocket() {
     const line = getWinningLine(index);
     if (line) {
       gameOver = true;
+      winningLine = line.map((idx) => {
+        const [row, col] = rcOf(idx);
+        return { row, col, index: idx };
+      });
+
       lockBoard();
       line.forEach((idx) => {
         if (cells[idx]) cells[idx].classList.add("winner");
@@ -1211,6 +1220,7 @@ function initSocket() {
 
     gameOver = !!serverGameOver;
     currentPlayer = serverCurrentPlayer || "black";
+    winningLine = [];
 
     document.body.classList.toggle("white-turn", currentPlayer === "white");
 
@@ -1221,9 +1231,9 @@ function initSocket() {
     }
 
     const shareContainer = document.getElementById("shareContainer");
-if (shareContainer) {
-  shareContainer.style.display = "none";
-}
+    if (shareContainer) {
+      shareContainer.style.display = "none";
+    }
 
     if (isWatching) {
       status.textContent = `👀 Watching ${currentBlackName} vs ${currentWhiteName}`;
@@ -1261,6 +1271,7 @@ if (shareContainer) {
     grid.fill(null);
     lastMoveIndex = null;
     winnerAlreadyCounted = false;
+    winningLine = [];
     buildBoard();
 
     pendingInviteTargetId = null;
@@ -1302,9 +1313,9 @@ function resetGame() {
   buildBoard();
 
   const shareContainer = document.getElementById("shareContainer");
-if (shareContainer) {
-  shareContainer.style.display = "none";
-}
+  if (shareContainer) {
+    shareContainer.style.display = "none";
+  }
 
   if (modeSelect.value === "online") {
     if (socket && myColor) {
@@ -1399,6 +1410,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initSocket();
   initOnlineUI();
   resetGame();
+
+  if (chatContent) {
+    chatContent.style.display = "none";
+  }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
