@@ -3,7 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Morpions/Gomoku</title>
+  <title>Gomoku Online</title>
+
+  <meta name="description" content="Play Gomoku online with real players. Train your brain and strategy.">
+
+  <meta property="og:title" content="Gomoku Online">
+  <meta property="og:description" content="Play Gomoku online with real players. Train your brain and strategy.">
+  <meta property="og:image" content="logo.png">
+  <meta property="og:url" content="https://gomoku-morpion-5-online.onrender.com">
+  <meta property="og:type" content="website">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Gomoku Online">
+  <meta name="twitter:description" content="Play Gomoku online with real players. Train your brain and strategy.">
+  <meta name="twitter:image" content="logo.png">
 
   <link rel="shortcut icon" href="logo.png">
   <link rel="stylesheet" href="style.css">
@@ -60,7 +73,12 @@
 
         <div class="control-group button-group">
           <label class="hidden-label">Online</label>
-          <button id="goOnline">🔍 Find a player</button>
+          <button id="goOnline" type="button">🔍 Find a player</button>
+        </div>
+
+        <div class="control-group button-group">
+          <label class="hidden-label">Share</label>
+          <button id="shareSiteBtn" type="button">🔗 Share Site</button>
         </div>
 
         <div class="control-group button-group">
@@ -101,10 +119,10 @@
       </div>
 
       <main class="game-area">
-
         <div id="shareContainer" style="display:none; text-align:center; margin-bottom:10px;">
-  <button id="shareMatchBtn">📤 Share this match</button>
-</div>
+          <button id="shareMatchBtn" type="button">📤 Share this match</button>
+        </div>
+
         <div id="board" aria-label="Gomoku game board"></div>
       </main>
 
@@ -112,20 +130,20 @@
   </div>
 
   <!-- PETIT CHAT UNIQUE -->
-<div id="chatContainer">
-  <div id="chatHeader">
-  💬 Chat <span id="chatBadge">●</span>
-</div>
+  <div id="chatContainer">
+    <div id="chatHeader">
+      💬 Chat <span id="chatBadge">●</span>
+    </div>
 
-  <div id="chatContent">
-    <div id="chatBox">Aucun message...</div>
+    <div id="chatContent">
+      <div id="chatBox">Aucun message...</div>
 
-    <div class="chat-input-row">
-      <input id="chatInput" type="text" placeholder="Message..." />
-      <button id="chatSend" type="button" onclick="sendMessage()">➤</button>
+      <div class="chat-input-row">
+        <input id="chatInput" type="text" placeholder="Message..." />
+        <button id="chatSend" type="button" onclick="sendMessage()">➤</button>
+      </div>
     </div>
   </div>
-</div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>

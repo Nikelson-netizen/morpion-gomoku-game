@@ -1427,3 +1427,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+// 🔗 SHARE SITE BUTTON (GLOBAL)
+
+const shareSiteBtn = document.getElementById("shareSiteBtn");
+
+if (shareSiteBtn) {
+  shareSiteBtn.addEventListener("click", async () => {
+    const shareData = {
+      title: "Gomoku Online",
+      text: "Play Gomoku online with real players 🔥 Train your brain 🧠",
+      url: window.location.origin
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        alert("Link copied! You can now post it on social media.");
+      }
+    } catch (error) {
+      console.log("Share cancelled", error);
+    }
+  });
+}
