@@ -208,6 +208,8 @@ function showWinner(winnerName) {
   if (shareContainer && shareBtn) {
     shareContainer.style.display = "block";
     shareBtn.onclick = () => shareMatch(winnerName);
+    
+    generateShareImage(winnerName);
   }
 }
 
@@ -1448,5 +1450,46 @@ if (shareSiteBtn) {
     } catch (error) {
       console.log(error);
     }
+  });
+}
+
+function generateShareImage(winnerName) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = 800;
+  canvas.height = 1000;
+
+  // Background
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Title
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 40px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(`${winnerName} just won!`, 400, 80);
+
+  // Challenge text
+  ctx.font = "28px Arial";
+  ctx.fillStyle = "#22c55e";
+  ctx.fillText("Can you beat me? 😈", 400, 130);
+
+  // Capture board
+  const board = document.getElementById("board");
+
+  html2canvas(board).then(boardCanvas => {
+    ctx.drawImage(boardCanvas, 100, 180, 600, 600);
+
+    // Footer
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "24px Arial";
+    ctx.fillText("Play now 👉 yoursite.com", 400, 900);
+
+    // Download
+    const link = document.createElement("a");
+    link.download = "gomoku-win.png";
+    link.href = canvas.toDataURL();
+    link.click();
   });
 }
