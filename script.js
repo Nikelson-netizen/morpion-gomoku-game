@@ -29,11 +29,11 @@ if (chatBox) {
 
 if (chatHeader && chatContent) {
   chatHeader.addEventListener("click", () => {
-    if (chatContent.style.display === "none") {
-      chatContent.style.display = "block";
-    } else {
-      chatContent.style.display = "none";
-    }
+    const isHidden =
+      chatContent.style.display === "none" ||
+      getComputedStyle(chatContent).display === "none";
+
+    chatContent.style.display = isHidden ? "block" : "none";
   });
 }
 
@@ -204,13 +204,13 @@ function showWinner(winnerName) {
 
   const shareContainer = document.getElementById("shareContainer");
   const shareBtn = document.getElementById("shareMatchBtn");
-
   if (shareContainer && shareBtn) {
-    shareContainer.style.display = "block";
-    shareBtn.onclick = () => shareMatch(winnerName);
-    
-    generateShareImage(winnerName);
-  }
+  shareContainer.style.display = "block";
+
+  shareBtn.onclick = async () => {
+  await generateShareImage(winnerName);
+};
+}
 }
 
 function updateTurnStatus() {
@@ -406,7 +406,13 @@ function sendMessage() {
 
 function addChatMessage(name, message) {
   const box = document.getElementById("chatBox");
+  const chatContent = document.getElementById("chatContent");
+
   if (!box) return;
+
+  if (chatContent) {
+    chatContent.style.display = "block";
+  }
 
   if (box.textContent.trim() === "Aucun message...") {
     box.innerHTML = "";
@@ -465,153 +471,97 @@ ${shareUrl}`;
   }
 }
 
+async function shareMatchImage(winnerName) {
+  try {
+    const imageBlob = await createShareImage(winnerName);
+
+    if (!imageBlob) return;
+
+    const imageFile = new File([imageBlob], "gomoku-match.png", {
+      type: "image/png"
+    });
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+      await navigator.share({
+        title: "Gomoku Match",
+        files: [imageFile]
+      });
+    } else {
+      // fallback si le partage fichiers n'est pas supporté
+      const link = document.createElement("a");
+      link.download = "gomoku-match.png";
+      link.href = URL.createObjectURL(imageBlob);
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+  } catch (error) {
+    console.error("Share image error:", error);
+  }
+}
+
 async function createShareImage(winnerName) {
   const canvas = document.createElement("canvas");
-  canvas.width = 1200;
-  canvas.height = 630;
-
   const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
 
-  ctx.fillStyle = "#f5efe2";
+  canvas.width = 1080;
+  canvas.height = 1350;
+
+  // fond blanc
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "#ffffff";
-  roundRect(ctx, 35, 35, 1130, 560, 24);
-  ctx.fill();
+  ctx.textAlign = "center";
 
+  // titre
   ctx.fillStyle = "#111827";
-  ctx.font = "bold 42px Arial";
-  ctx.fillText("GOMOKU ONLINE", 70, 95);
+  ctx.font = "bold 64px Arial";
+  ctx.fillText("GOMOKU ONLINE", canvas.width / 2, 100);
 
+  // sous-titre
   ctx.fillStyle = "#2563eb";
-  ctx.font = "bold 30px Arial";
-  ctx.fillText("I came to win 🔥", 70, 145);
+  ctx.font = "bold 34px Arial";
+  ctx.fillText("Can you beat me? 😈", canvas.width / 2, 160);
 
+  // winner
   ctx.fillStyle = "#111827";
-  ctx.font = "28px Arial";
-  ctx.fillText(`Winner: ${winnerName}`, 70, 205);
+  ctx.font = "48px Arial";
+  ctx.fillText(`Winner: ${winnerName}`, canvas.width / 2, 235);
 
+  // score box
   ctx.fillStyle = "#f3f4f6";
-  roundRect(ctx, 70, 240, 430, 110, 18);
-  ctx.fill();
+  ctx.fillRect(210, 290, 660, 95);
 
   ctx.fillStyle = "#6b7280";
-  ctx.font = "bold 20px Arial";
-  ctx.fillText("MATCH SCORE", 95, 280);
+  ctx.font = "bold 22px Arial";
+  ctx.fillText("MATCH SCORE", canvas.width / 2, 325);
 
   ctx.fillStyle = "#111827";
   ctx.font = "bold 30px Arial";
   ctx.fillText(
     `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`,
-    95,
-    325
+    canvas.width / 2,
+    365
   );
 
-  ctx.fillStyle = "#374151";
-  ctx.font = "24px Arial";
-  ctx.fillText("Play now:", 70, 405);
+  // capture grille
+  const board = document.getElementById("board");
+  const boardCanvas = await html2canvas(board, {
+    backgroundColor: null,
+    scale: 2
+  });
 
-  ctx.fillStyle = "#2563eb";
-  ctx.font = "bold 24px Arial";
-  ctx.fillText(window.location.origin, 70, 440);
+  ctx.drawImage(boardCanvas, 160, 430, 760, 760);
 
+  // footer
   ctx.fillStyle = "#6b7280";
-  ctx.font = "20px Arial";
-  ctx.fillText("Play free online with other players", 70, 520);
+  ctx.font = "28px Arial";
+  ctx.fillText("Play free online with other players", canvas.width / 2, 1260);
 
-  const boardX = 650;
-  const boardY = 95;
-  const boardSizePx = 430;
-  const boardCells = 10;
-  const step = boardSizePx / boardCells;
-
-  ctx.fillStyle = "#d9b97a";
-  roundRect(ctx, boardX, boardY, boardSizePx, boardSizePx, 18);
-  ctx.fill();
-
-  ctx.strokeStyle = "#7c5a2c";
-  ctx.lineWidth = 1.5;
-
-  for (let i = 0; i <= boardCells; i++) {
-    const pos = boardX + i * step;
-
-    ctx.beginPath();
-    ctx.moveTo(pos, boardY);
-    ctx.lineTo(pos, boardY + boardSizePx);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(boardX, boardY + i * step);
-    ctx.lineTo(boardX + boardSizePx, boardY + i * step);
-    ctx.stroke();
-  }
-
-  const shareData = getShareData(10);
-  const stones = shareData.stones;
-  const winningOverlay = shareData.winningOverlay;
-
-  if (winningOverlay.length >= 2) {
-    const sorted = [...winningOverlay].sort((a, b) => {
-      if (a.y !== b.y) return a.y - b.y;
-      return a.x - b.x;
-    });
-
-    const first = sorted[0];
-    const last = sorted[sorted.length - 1];
-
-    ctx.beginPath();
-    ctx.moveTo(boardX + first.x * step, boardY + first.y * step);
-    ctx.lineTo(boardX + last.x * step, boardY + last.y * step);
-    ctx.strokeStyle = "#facc15";
-    ctx.lineWidth = 10;
-    ctx.lineCap = "round";
-    ctx.stroke();
-    ctx.lineWidth = 1.5;
-    ctx.lineCap = "butt";
-  }
-
-  stones.forEach((stone, index) => {
-    const x = boardX + stone.x * step;
-    const y = boardY + stone.y * step;
-
-    if (stone.isWinning) {
-      ctx.beginPath();
-      ctx.arc(x, y, 21, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(250, 204, 21, 0.35)";
-      ctx.fill();
-    }
-
-    ctx.beginPath();
-    ctx.arc(x, y, 15, 0, Math.PI * 2);
-
-    if (stone.color === "black") {
-      ctx.fillStyle = "#111111";
-      ctx.fill();
-      ctx.strokeStyle = "#000000";
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = "#f8fafc";
-      ctx.fill();
-      ctx.strokeStyle = "#9ca3af";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.lineWidth = 1.5;
-    }
-
-    if (index === stones.length - 1) {
-      ctx.beginPath();
-      ctx.arc(x, y, 24, 0, Math.PI * 2);
-      ctx.strokeStyle = "#60a5fa";
-      ctx.lineWidth = 4;
-      ctx.stroke();
-      ctx.lineWidth = 1.5;
-    }
-  });
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), "image/png");
-  });
+  // téléchargement
+  const link = document.createElement("a");
+  link.download = "gomoku-match.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
 }
 
 function roundRect(ctx, x, y, width, height, radius) {
@@ -1453,43 +1403,77 @@ if (shareSiteBtn) {
   });
 }
 
-function generateShareImage(winnerName) {
+async function generateShareImage(winnerName) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
-  canvas.width = 800;
-  canvas.height = 1000;
+  canvas.width = 1080;
+  canvas.height = 1400;
 
   // Background
-  ctx.fillStyle = "#0f172a";
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Title
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 40px Arial";
+  ctx.fillStyle = "#111827";
+  ctx.font = "bold 60px Arial";
   ctx.textAlign = "center";
-  ctx.fillText(`${winnerName} just won!`, 400, 80);
+  ctx.fillText("GOMOKU ONLINE", 540, 100);
 
-  // Challenge text
-  ctx.font = "28px Arial";
-  ctx.fillStyle = "#22c55e";
-  ctx.fillText("Can you beat me? 😈", 400, 130);
+  // Subtitle
+  ctx.fillStyle = "#2563eb";
+  ctx.font = "bold 34px Arial";
+  ctx.fillText("Can you beat me? 😈", 540, 155);
+
+  // Winner
+  ctx.fillStyle = "#111827";
+  ctx.font = "36px Arial";
+  ctx.fillText(`Winner: ${winnerName}`, 540, 220);
+
+  // Score box
+  ctx.fillStyle = "#f3f4f6";
+  ctx.fillRect(180, 260, 720, 90);
+
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "bold 24px Arial";
+  ctx.fillText("MATCH SCORE", 540, 295);
+
+  ctx.fillStyle = "#111827";
+  ctx.font = "bold 34px Arial";
+  ctx.fillText(
+    `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`,
+    540,
+    335
+  );
 
   // Capture board
   const board = document.getElementById("board");
-
-  html2canvas(board).then(boardCanvas => {
-    ctx.drawImage(boardCanvas, 100, 180, 600, 600);
-
-    // Footer
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "24px Arial";
-    ctx.fillText("Play now 👉 yoursite.com", 400, 900);
-
-    // Download
-    const link = document.createElement("a");
-    link.download = "gomoku-win.png";
-    link.href = canvas.toDataURL();
-    link.click();
+  const boardCanvas = await html2canvas(board, {
+    backgroundColor: null,
+    scale: 2
   });
+
+  ctx.drawImage(boardCanvas, 140, 400, 800, 800);
+
+  // Footer
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "28px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("Play free online with other players", 540, 1220);
+
+  // Link
+  ctx.fillStyle = "#111827";
+  ctx.font = "26px Arial";
+  ctx.fillText("Play now:", 540, 1280);
+
+  ctx.fillStyle = "#2563eb";
+  ctx.font = "bold 28px Arial";
+  ctx.fillText("gomoku-morpion-5-online.onrender.com", 540, 1335);
+
+  // Download
+  const link = document.createElement("a");
+  link.download = "gomoku-match.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
 }
+
