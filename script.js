@@ -1165,6 +1165,9 @@ function initSocket() {
   }) => {
     unlockBoard();
 
+    resetButton.textContent = "Restart";
+resetButton.style.background = "";
+
     currentBlackName = blackName || currentBlackName;
     currentWhiteName = whiteName || currentWhiteName;
 
@@ -1213,6 +1216,11 @@ function initSocket() {
     isWatching = false;
     watchingMatchId = null;
     unlockBoard();
+
+    const shareContainer = document.getElementById("shareContainer");
+if (shareContainer) {
+  shareContainer.style.display = "none";
+}
 
     myColor = null;
     gameOver = true;
