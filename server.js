@@ -20,15 +20,22 @@ const stats = {
   totalConnections: 0,
   totalGamesStarted: 0,
   totalGamesFinished: 0,
-  totalWatchJoins: 0
+  totalWatchJoins: 0,
+
+  dailyConnections: {}
 };
+function getToday() {
+  const d = new Date();
+  return d.toISOString().split("T")[0]; // ex: "2026-03-26"
+}
 
 function logStats() {
   console.log("📊 ===== PROJECT STATS =====");
   console.log("👥 Total connections :", stats.totalConnections);
-  console.log("🎮 Games started     :", stats.totalGamesStarted);
-  console.log("🏁 Games finished    :", stats.totalGamesFinished);
-  console.log("👀 Watch joins       :", stats.totalWatchJoins);
+  console.log("🎮 Games started    :", stats.totalGamesStarted);
+  console.log("🏁 Games finished   :", stats.totalGamesFinished);
+  console.log("👀 Watch joins      :", stats.totalWatchJoins);
+  console.log("📅 Today connections:", stats.dailyConnections[getToday()] || 0);
   console.log("============================");
 }
 
@@ -289,8 +296,17 @@ function cleanupDisconnectedPlayer(socketId) {
 
 io.on("connection", (socket) => {
   stats.totalConnections++;
-  console.log("🟢 New connection:", socket.id);
-  logStats();
+
+const today = getToday();
+
+if (!stats.dailyConnections[today]) {
+  stats.dailyConnections[today] = 0;
+}
+
+stats.dailyConnections[today]++;
+
+console.log("🟢 New connection:", socket.id);
+logStats();
 
   socket.matchId = null;
 
