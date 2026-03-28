@@ -678,7 +678,9 @@ logStats();
   });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+setInterval(logStats, 30000); // toutes les 30 secondes
