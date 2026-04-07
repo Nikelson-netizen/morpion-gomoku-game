@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="shortcut icon" href="logo.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="🧠 Challenge your brain - Gomoku Online" />
+  <meta property="og:description" content="Play Gomoku online with real players. Think you're smarter? 😏 Join the challenge now!" />
+  <meta property="og:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png" />
+  <meta property="og:url" content="https://gomoku-morpion-5-online.onrender.com/" />
+  <meta property="og:type" content="website" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="🧠 Challenge your brain - Gomoku Online" />
+  <meta name="twitter:description" content="Play Gomoku online with real players. Think you're smarter? 😏 Join the challenge now!" />
+  <meta name="twitter:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png" />
+
+  <title>Gomoku Challenge</title>
+  <link rel="stylesheet" href="challenge.css" />
+</head>
+<body>
+  <div class="challenge-page">
+    <header class="challenge-header">
+      <div>
+        <h1>🔥 Gomoku Challenge</h1>
+        <p class="subtitle">Climb the leaderboard and challenge other players</p>
+      </div>
+
+      <div class="header-actions">
+        <a href="index.html" class="back-btn">← Back to Game</a>
+      </div>
+    </header>
+
+    <main class="challenge-grid">
+      <!-- Player Summary visible -->
+      <section class="card player-card player-summary-card">
+        <div class="player-top">
+          <div id="challengeAvatar" class="avatar">P</div>
+          <div>
+            <div id="challengePlayerName" class="player-name">Player</div>
+            <div id="challengePlayerStatus" class="player-status online">
+              <span class="dot green"></span> Online
+            </div>
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span>Progress to next level</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Challenge Actions -->
+      <section class="card actions-card collapsible-card">
+        <button type="button" class="collapse-toggle" data-target="actionsContent">
+          <span>⚔️ Challenge Actions</span>
+          <span class="collapse-icon">+</span>
+        </button>
+
+        <div id="actionsContent" class="collapse-content">
+          <div class="actions-list">
+            <button id="startChallengeBtn" class="main-action-btn">Start Challenge</button>
+            <button id="simulateWinBtn" class="secondary-btn dev-only">Simulate Win</button>
+<button id="simulateLossBtn" class="secondary-btn dev-only">Simulate Loss</button>
+<button id="simulateHardWinBtn" class="secondary-btn dev-only">Hard Win (AI started)</button>
+
+<!-- ✅ celui-ci reste NORMAL -->
+<button id="resetChallengeDataBtn" class="danger-btn">Reset Challenge Data</button>
+            <button id="shareChallengeBtn" class="share-btn">🟢 Share Challenge</button>
+          </div>
+
+          <div class="challenge-note">
+            Challenge mode lets you play against AI, earn points, climb the leaderboard, and share your progress.
+          </div>
+        </div>
+      </section>
+
+      <!-- Player Profile -->
+      <section class="card player-card collapsible-card">
+        <button type="button" class="collapse-toggle" data-target="profileContent">
+          <span>👤 Player Profile</span>
+          <span class="collapse-icon">+</span>
+        </button>
+
+        <div id="profileContent" class="collapse-content">
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="label">Points</span>
+              <span id="playerPoints" class="value">0</span>
+            </div>
+
+            <div class="stat-box">
+              <span class="label">Level</span>
+              <span id="playerLevel" class="value">Beginner</span>
+            </div>
+
+            <div class="stat-box">
+              <span class="label">Wins</span>
+              <span id="playerWins" class="value">0</span>
+            </div>
+
+            <div class="stat-box">
+              <span class="label">Losses</span>
+              <span id="playerLosses" class="value">0</span>
+            </div>
+
+            <div class="stat-box">
+              <span class="label">Win Streak</span>
+              <span id="playerStreak" class="value">0</span>
+            </div>
+
+            <div class="stat-box">
+              <span class="label">Best Streak</span>
+              <span id="playerBestStreak" class="value">0</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Leaderboard -->
+      <section class="card leaderboard-card collapsible-card">
+        <button type="button" class="collapse-toggle" data-target="leaderboardContent">
+          <span>🏆 Leaderboard</span>
+          <span class="collapse-icon">+</span>
+        </button>
+
+        <div id="leaderboardContent" class="collapse-content">
+          <div id="leaderboardList" class="leaderboard-list"></div>
+        </div>
+      </section>
+
+      <!-- Challenge History under Leaderboard -->
+      <section class="card history-card collapsible-card">
+        <button type="button" class="collapse-toggle" data-target="historyContent">
+          <span>🕘 Challenge History</span>
+          <span class="collapse-icon">+</span>
+        </button>
+
+        <div id="historyContent" class="collapse-content">
+          <div id="historyList" class="history-list"></div>
+        </div>
+      </section>
+
+      <!-- Challenge Game -->
+      <section class="card challenge-game-card">
+        <h2 class="challenge-title">🎮 Play Challenge</h2>
+
+        <div class="challenge-game-top">
+          <div id="status" class="challenge-status">Turn : Black</div>
+        </div>
+
+        <div style="display:none;">
+          <select id="mode">
+            <option value="ai" selected>AI</option>
+          </select>
+        </div>
+
+        <div class="challenge-top-controls">
+          <div class="challenge-controls">
+            <input id="playerName" type="text" placeholder="Enter your name" />
+
+            <select id="aiLevel">
+              <option value="1">Level 1</option>
+              <option value="2" selected>Level 2</option>
+              <option value="3">Level 3</option>
+              <option value="4">Level 4</option>
+              <option value="5">Level 5</option>
+            </select>
+
+            <select id="firstPlayer">
+              <option value="human" selected>Human first</option>
+              <option value="ai">AI first</option>
+            </select>
+
+            <button id="reset" class="challenge-reset-btn">Restart</button>
+          </div>
+        </div>
+
+        <div class="challenge-board-wrap">
+          <div id="board" class="challenge-board"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+  <script src="challenge.js"></script>
+</body>
+</html>

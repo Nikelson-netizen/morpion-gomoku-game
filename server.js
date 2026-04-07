@@ -4,13 +4,35 @@ const { Server } = require("socket.io");
 const path = require("path");
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+app.disable("x-powered-by");
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
 
 app.use(express.static(path.join(__dirname)));
 
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: true,
+    methods: ["GET", "POST"]
+  },
+  maxHttpBufferSize: 1e5,
+  pingTimeout: 20000,
+  pingInterval: 25000
+});
+
 const BOARD_SIZE = 15;
 const BOARD_CELLS = BOARD_SIZE * BOARD_SIZE;
+const MAX_NAME_LENGTH = 20;
+const MAX_CHAT_LENGTH = 200;
+const MAX_PENDING_INVITES = 1;
 
 const onlinePlayers = new Map();
 const publicMatches = [];
@@ -21,12 +43,12 @@ const stats = {
   totalGamesStarted: 0,
   totalGamesFinished: 0,
   totalWatchJoins: 0,
-
   dailyConnections: {}
 };
+
 function getToday() {
   const d = new Date();
-  return d.toISOString().split("T")[0]; // ex: "2026-03-26"
+  return d.toISOString().split("T")[0];
 }
 
 function logStats() {
@@ -90,6 +112,24 @@ function isWinningMove(board, index, player) {
   }
 
   return false;
+}
+
+function sanitizeName(name) {
+  return String(name || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_NAME_LENGTH);
+}
+
+function sanitizeChatMessage(msg) {
+  return String(msg || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_CHAT_LENGTH);
+}
+
+function isValidIndex(index) {
+  return Number.isInteger(index) && index >= 0 && index < BOARD_CELLS;
 }
 
 function buildPlayersForSocket(socketId) {
@@ -231,11 +271,20 @@ function removeSpectatorFromAllMatches(socketId) {
 
 function generatePlayerCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+  let attempts = 0;
+
+  while (attempts < 50) {
+    let code = "";
+    for (let i = 0; i < 4; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+
+    const exists = [...onlinePlayers.values()].some((p) => p.code === code);
+    if (!exists) return code;
+    attempts++;
   }
-  return code;
+
+  return `${Date.now().toString(36).slice(-4).toUpperCase()}`;
 }
 
 function cleanupDisconnectedPlayer(socketId) {
@@ -294,27 +343,38 @@ function cleanupDisconnectedPlayer(socketId) {
   broadcastMatches();
 }
 
+function canPerformAction(socket, key, limitMs) {
+  if (!socket._rateLimits) socket._rateLimits = {};
+  const now = Date.now();
+  const last = socket._rateLimits[key] || 0;
+
+  if (now - last < limitMs) {
+    return false;
+  }
+
+  socket._rateLimits[key] = now;
+  return true;
+}
+
 io.on("connection", (socket) => {
   stats.totalConnections++;
 
-const today = getToday();
+  const today = getToday();
+  if (!stats.dailyConnections[today]) {
+    stats.dailyConnections[today] = 0;
+  }
+  stats.dailyConnections[today]++;
 
-if (!stats.dailyConnections[today]) {
-  stats.dailyConnections[today] = 0;
-}
-
-stats.dailyConnections[today]++;
-
-console.log("🟢 New connection:", socket.id);
-logStats();
+  console.log("🟢 New connection:", socket.id);
+  logStats();
 
   socket.matchId = null;
 
   socket.on("sendMessage", (msg) => {
     if (!socket.matchId) return;
-    if (typeof msg !== "string") return;
+    if (!canPerformAction(socket, "sendMessage", 600)) return;
 
-    const cleanMessage = msg.trim().slice(0, 200);
+    const cleanMessage = sanitizeChatMessage(msg);
     if (!cleanMessage) return;
 
     io.to(socket.matchId).emit("receiveMessage", {
@@ -324,14 +384,18 @@ logStats();
   });
 
   socket.on("registerOnlinePlayer", ({ name }) => {
-    const cleanName = String(name || "").trim().slice(0, 20);
+    if (!canPerformAction(socket, "registerOnlinePlayer", 1000)) {
+      socket.emit("errorMessage", "Please wait a moment before trying again.");
+      return;
+    }
+
+    const cleanName = sanitizeName(name);
 
     if (!cleanName) {
       socket.emit("errorMessage", "Invalid player name.");
       return;
     }
 
-    // ✅ sécurité : supprime tout vieux match lié à ce joueur
     removeAllMatchesForPlayer(socket.id);
 
     onlinePlayers.set(socket.id, {
@@ -350,6 +414,11 @@ logStats();
   });
 
   socket.on("invitePlayer", ({ targetId }) => {
+    if (!canPerformAction(socket, "invitePlayer", 1000)) {
+      socket.emit("errorMessage", "Please wait before sending another invite.");
+      return;
+    }
+
     const me = onlinePlayers.get(socket.id);
     const other = onlinePlayers.get(targetId);
 
@@ -365,6 +434,15 @@ logStats();
 
     if (socket.id === targetId) {
       socket.emit("errorMessage", "You cannot invite yourself.");
+      return;
+    }
+
+    const invitesFromMe = [...pendingInvites.values()].filter(
+      (invite) => invite.fromId === socket.id
+    ).length;
+
+    if (invitesFromMe >= MAX_PENDING_INVITES) {
+      socket.emit("errorMessage", "You already have a pending invite.");
       return;
     }
 
@@ -389,6 +467,11 @@ logStats();
   });
 
   socket.on("acceptInvite", ({ fromId }) => {
+    if (!canPerformAction(socket, "acceptInvite", 800)) {
+      socket.emit("errorMessage", "Please wait a moment.");
+      return;
+    }
+
     const invite = pendingInvites.get(socket.id);
     const me = onlinePlayers.get(socket.id);
     const other = onlinePlayers.get(fromId);
@@ -410,7 +493,6 @@ logStats();
       return;
     }
 
-    // ✅ sécurité : supprime tout vieux match sale des deux joueurs
     removeAllMatchesForPlayer(socket.id);
     removeAllMatchesForPlayer(fromId);
 
@@ -474,6 +556,11 @@ logStats();
   });
 
   socket.on("declineInvite", ({ fromId }) => {
+    if (!canPerformAction(socket, "declineInvite", 500)) {
+      socket.emit("errorMessage", "Please wait a moment.");
+      return;
+    }
+
     const invite = pendingInvites.get(socket.id);
 
     if (!invite || invite.fromId !== fromId) {
@@ -486,6 +573,11 @@ logStats();
   });
 
   socket.on("watchMatch", ({ matchId }) => {
+    if (!canPerformAction(socket, "watchMatch", 500)) {
+      socket.emit("errorMessage", "Please wait a moment.");
+      return;
+    }
+
     stats.totalWatchJoins++;
     console.log("👀 Spectator joined");
     logStats();
@@ -538,6 +630,11 @@ logStats();
   });
 
   socket.on("playMove", ({ index }) => {
+    if (!canPerformAction(socket, "playMove", 80)) {
+      socket.emit("errorMessage", "Too many actions. Slow down.");
+      return;
+    }
+
     const match = findMatchBySocketId(socket.id);
 
     if (!match) {
@@ -562,7 +659,7 @@ logStats();
       return;
     }
 
-    if (!Number.isInteger(index) || index < 0 || index >= BOARD_CELLS) {
+    if (!isValidIndex(index)) {
       socket.emit("errorMessage", "Invalid move.");
       return;
     }
@@ -598,6 +695,11 @@ logStats();
   });
 
   socket.on("resetOnlineGame", () => {
+    if (!canPerformAction(socket, "resetOnlineGame", 1000)) {
+      socket.emit("errorMessage", "Please wait before restarting again.");
+      return;
+    }
+
     const match = findMatchBySocketId(socket.id);
 
     if (!match) {
@@ -633,6 +735,11 @@ logStats();
   });
 
   socket.on("leaveMatch", () => {
+    if (!canPerformAction(socket, "leaveMatch", 500)) {
+      socket.emit("errorMessage", "Please wait a moment.");
+      return;
+    }
+
     const match = findMatchBySocketId(socket.id);
 
     if (!match) {
@@ -683,4 +790,4 @@ server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-setInterval(logStats, 30000); // toutes les 30 secondes
+setInterval(logStats, 30000);

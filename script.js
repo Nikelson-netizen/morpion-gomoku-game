@@ -7,6 +7,44 @@ const aiSelect = document.getElementById("aiLevel");
 const firstPlayerSelect = document.getElementById("firstPlayer");
 
 const playerNameInput = document.getElementById("playerName");
+
+if (playerNameInput) {
+  playerNameInput.value = "";
+
+  playerNameInput.addEventListener("input", () => {
+    const typedName = playerNameInput.value.trim();
+
+    if (isChallengeModeActive()) {
+      if (typedName) {
+        localStorage.setItem("challengePlayerName", typedName);
+      } else {
+        localStorage.removeItem("challengePlayerName");
+      }
+    } else {
+      if (typedName) {
+        localStorage.setItem("playerName", typedName);
+      } else {
+        localStorage.removeItem("playerName");
+      }
+    }
+
+    refreshPlayerNames();
+
+    if (!gameOver && modeSelect.value !== "online") {
+      if (modeSelect.value === "ai" && currentPlayer === AI_PLAYER) {
+        status.textContent = "Turn : AI";
+      } else {
+        status.textContent = `Turn : ${getPlayerDisplayName(currentPlayer)}`;
+      }
+    }
+
+    if (scoreText) {
+      scoreText.textContent =
+        `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
+    }
+  });
+}
+
 const goOnlineButton = document.getElementById("goOnline");
 const onlineInfo = document.getElementById("onlineInfo");
 const onlinePlayersBox = document.getElementById("onlinePlayers");
@@ -14,6 +52,20 @@ const publicMatchesBox = document.getElementById("publicMatches");
 const scoreText = document.getElementById("scoreText");
 
 const leaveMatchButton = document.getElementById("leaveMatch");
+if (leaveMatchButton) {
+  if (modeSelect.value !== "online") {
+    leaveMatchButton.style.display = "none";
+  }
+
+  modeSelect.addEventListener("change", () => {
+    if (modeSelect.value === "online") {
+      leaveMatchButton.style.display = "inline-block";
+    } else {
+      leaveMatchButton.style.display = "none";
+    }
+  });
+}
+
 const inviteBox = document.getElementById("inviteBox");
 const inviteText = document.getElementById("inviteText");
 const acceptInviteButton = document.getElementById("acceptInvite");
@@ -22,6 +74,80 @@ const declineInviteButton = document.getElementById("declineInvite");
 const chatBox = document.getElementById("chatBox");
 const chatHeader = document.getElementById("chatHeader");
 const chatContent = document.getElementById("chatContent");
+const challengeBtn = document.getElementById("challengeBtn");
+
+const isChallengeMode = localStorage.getItem("challengeMode");
+const challengeLevel = localStorage.getItem("challengeLevel");
+const challengeFirstPlayer = localStorage.getItem("challengeFirstPlayer");
+
+let challengeSessionActive = false;
+
+function getTypedPlayerName() {
+  return playerNameInput ? playerNameInput.value.trim() : "";
+}
+
+function isChallengeModeActive() {
+  return (
+    modeSelect &&
+    modeSelect.value === "ai" &&
+    status &&
+    status.textContent.includes("Challenge Mode")
+  );
+}
+
+function isChallengeNameMissing() {
+  const isChallengePage = window.location.pathname.includes("challenge.html");
+
+  if (!isChallengePage) return false;
+
+  const name = localStorage.getItem("challengePlayerName");
+  return !name || !name.trim();
+}
+
+function refreshPlayerNames() {
+  const typedName = playerNameInput ? playerNameInput.value.trim() : "";
+
+  if (isChallengeModeActive()) {
+    const challengeName = localStorage.getItem("challengePlayerName");
+
+    if (challengeName && challengeName.trim()) {
+      currentBlackName = challengeName.trim();
+    } else {
+      currentBlackName = "Black";
+    }
+  } else {
+    if (typedName) {
+      currentBlackName = typedName;
+    } else {
+      currentBlackName = "Black";
+    }
+  }
+
+  currentWhiteName = "White";
+}
+
+function launchChallengeMode() {
+  challengeSessionActive = true;
+
+  modeSelect.value = "ai";
+  aiSelect.value = challengeLevel || "2";
+  firstPlayerSelect.value = challengeFirstPlayer || "human";
+
+  if (playerNameInput) {
+    playerNameInput.value = "";
+  }
+
+  localStorage.removeItem("challengePlayerName");
+  currentBlackName = "Black";
+  currentWhiteName = "White";
+
+  resetGame();
+  status.textContent = "🔥 Challenge Mode - Enter your name";
+
+  localStorage.removeItem("challengeMode");
+  localStorage.removeItem("challengeLevel");
+  localStorage.removeItem("challengeFirstPlayer");
+}
 
 if (chatBox) {
   chatBox.innerHTML = "Aucun message...";
@@ -37,7 +163,7 @@ if (chatHeader && chatContent) {
   });
 }
 
-const placeSound = new Audio("click.mp3");
+const placeSound = new Audio("sounds/click.mp3");
 placeSound.preload = "auto";
 
 function playPlaceSound() {
@@ -105,6 +231,17 @@ function getPlayerDisplayName(color) {
   if (color === "black") return currentBlackName || "Black";
   if (color === "white") return currentWhiteName || "White";
   return color;
+}
+
+function resetMatchScore() {
+  matchScore.black = 0;
+  matchScore.white = 0;
+  winnerAlreadyCounted = false;
+
+  if (scoreText) {
+    scoreText.textContent =
+      `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
+  }
 }
 
 function clearWinnerClasses() {
@@ -194,8 +331,10 @@ function showWinner(winnerName) {
     winnerAlreadyCounted = true;
   }
 
-  scoreText.textContent =
-    `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
+  if (scoreText) {
+    scoreText.textContent =
+      `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
+  }
 
   status.textContent =
     `🎉 ${winnerName} wins the game! Score: ${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
@@ -204,13 +343,44 @@ function showWinner(winnerName) {
 
   const shareContainer = document.getElementById("shareContainer");
   const shareBtn = document.getElementById("shareMatchBtn");
-  if (shareContainer && shareBtn) {
-  shareContainer.style.display = "block";
 
-  shareBtn.onclick = async () => {
-  await generateShareImage(winnerName);
-};
-}
+  if (shareContainer) {
+    shareContainer.style.display = "block";
+  }
+
+  if (shareBtn) {
+    shareBtn.onclick = async () => {
+      await generateShareImage(winnerName);
+    };
+  }
+
+  if (challengeBtn) {
+    challengeBtn.textContent = "🔥 Challenge Me";
+    challengeBtn.style.display = "inline-block";
+
+    const humanWonVsAI =
+  challengeSessionActive &&
+  modeSelect.value === "ai" &&
+  winnerName === getPlayerDisplayName(HUMAN_PLAYER);
+
+    if (humanWonVsAI) {
+      challengeBtn.onclick = () => {
+        const data = {
+          winnerName: getTypedPlayerName() || winnerName,
+          aiLevel: aiSelect.value,
+          aiStarted: firstPlayerSelect.value === "ai",
+          mode: modeSelect.value
+        };
+
+        localStorage.setItem("challengeResult", JSON.stringify(data));
+        window.location.href = "challenge.html";
+      };
+    } else {
+      challengeBtn.onclick = () => {
+        window.location.href = "challenge.html";
+      };
+    }
+  }
 }
 
 function updateTurnStatus() {
@@ -233,7 +403,7 @@ function updateTurnStatus() {
     return;
   }
 
-  status.textContent = `Turn : ${currentPlayer === "black" ? "Black" : "White"}`;
+  status.textContent = `Turn : ${getPlayerDisplayName(currentPlayer)}`;
 }
 
 // ----------------- WORKER -----------------
@@ -406,12 +576,12 @@ function sendMessage() {
 
 function addChatMessage(name, message) {
   const box = document.getElementById("chatBox");
-  const chatContent = document.getElementById("chatContent");
+  const chatContentLocal = document.getElementById("chatContent");
 
   if (!box) return;
 
-  if (chatContent) {
-    chatContent.style.display = "block";
+  if (chatContentLocal) {
+    chatContentLocal.style.display = "block";
   }
 
   if (box.textContent.trim() === "Aucun message...") {
@@ -424,6 +594,7 @@ function addChatMessage(name, message) {
   box.scrollTop = box.scrollHeight;
 }
 
+// ----------------- SHARE -----------------
 async function shareMatch(winnerName) {
   const shareUrl = window.location.origin;
 
@@ -487,7 +658,6 @@ async function shareMatchImage(winnerName) {
         files: [imageFile]
       });
     } else {
-      // fallback si le partage fichiers n'est pas supporté
       const link = document.createElement("a");
       link.download = "gomoku-match.png";
       link.href = URL.createObjectURL(imageBlob);
@@ -506,28 +676,23 @@ async function createShareImage(winnerName) {
   canvas.width = 1080;
   canvas.height = 1350;
 
-  // fond blanc
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.textAlign = "center";
 
-  // titre
   ctx.fillStyle = "#111827";
   ctx.font = "bold 64px Arial";
   ctx.fillText("GOMOKU ONLINE", canvas.width / 2, 100);
 
-  // sous-titre
   ctx.fillStyle = "#2563eb";
   ctx.font = "bold 34px Arial";
   ctx.fillText("Can you beat me? 😈", canvas.width / 2, 160);
 
-  // winner
   ctx.fillStyle = "#111827";
   ctx.font = "48px Arial";
   ctx.fillText(`Winner: ${winnerName}`, canvas.width / 2, 235);
 
-  // score box
   ctx.fillStyle = "#f3f4f6";
   ctx.fillRect(210, 290, 660, 95);
 
@@ -543,8 +708,6 @@ async function createShareImage(winnerName) {
     365
   );
 
-  // capture grille
-  const board = document.getElementById("board");
   const boardCanvas = await html2canvas(board, {
     backgroundColor: null,
     scale: 2
@@ -552,12 +715,10 @@ async function createShareImage(winnerName) {
 
   ctx.drawImage(boardCanvas, 160, 430, 760, 760);
 
-  // footer
   ctx.fillStyle = "#6b7280";
   ctx.font = "28px Arial";
   ctx.fillText("Play free online with other players", canvas.width / 2, 1260);
 
-  // téléchargement
   const link = document.createElement("a");
   link.download = "gomoku-match.png";
   link.href = canvas.toDataURL("image/png");
@@ -659,6 +820,11 @@ function getShareData(limit = 10) {
 
 // ----------------- GAME FLOW -----------------
 function handleMove(i) {
+  if (isChallengeNameMissing()) {
+  status.textContent = "⚠️ Please enter your name from Challenge Me first";
+  return;
+}
+
   if (gameOver) return;
   if (grid[i]) return;
   if (isWatching) return;
@@ -704,9 +870,10 @@ function handleMove(i) {
 
     if (modeSelect.value === "online" && socket) {
       socket.emit("onlineGameWon", { winnerColor: currentPlayer });
+    } else {
+      showWinner(getPlayerDisplayName(currentPlayer));
     }
 
-    status.textContent = `🎉 Winner: ${getPlayerDisplayName(currentPlayer)}`;
     return;
   }
 
@@ -736,13 +903,13 @@ function handleAIMove(i) {
 
     lockBoard();
     line.forEach((idx) => cells[idx].classList.add("winner"));
-    status.textContent = "🎉 Winner : AI (White)";
+    showWinner(getPlayerDisplayName(currentPlayer));
     return;
   }
 
   currentPlayer = HUMAN_PLAYER;
   document.body.classList.toggle("white-turn", false);
-  status.textContent = "Turn : Black";
+  status.textContent = `Turn : ${currentBlackName}`;
 }
 
 function maybePlayAI() {
@@ -776,13 +943,42 @@ function maybePlayAI() {
 
 // ----------------- ONLINE UI -----------------
 function initOnlineUI() {
-  onlinePlayersBox.innerHTML = "No players online";
-  publicMatchesBox.innerHTML = "No public matches";
-  onlineInfo.textContent = 'Enter your name and click "Find a player" to appear online.';
+  if (onlinePlayersBox) onlinePlayersBox.innerHTML = "No players online";
+  if (publicMatchesBox) publicMatchesBox.innerHTML = "No public matches";
+
+  const playersStatus = document.getElementById("playersStatus");
+  const matchesStatus = document.getElementById("matchesStatus");
+
+  if (onlineInfo) {
+    if (modeSelect && modeSelect.value === "online") {
+      onlineInfo.textContent = 'Enter your name and click "Find a player" to appear online.';
+      if (playersStatus) {
+        playersStatus.textContent = 'Enter your name and click "Find a player" to appear online.';
+      }
+    } else {
+      onlineInfo.textContent = 'Select "Online Multiplayer" mode to find players.';
+      if (playersStatus) {
+        playersStatus.textContent = 'Select "Online Multiplayer" mode to find players.';
+      }
+    }
+  }
+
+  if (matchesStatus) {
+    matchesStatus.textContent = "No public matches";
+  }
 }
 
 function renderOnlinePlayers(players) {
   onlinePlayers = Array.isArray(players) ? players : [];
+
+  const playersStatus = document.getElementById("playersStatus");
+if (playersStatus) {
+  playersStatus.textContent = onlinePlayers.length
+    ? `${onlinePlayers.length} player(s) online`
+    : "No players online";
+}
+
+  if (!onlinePlayersBox) return;
 
   if (!onlinePlayers.length) {
     onlinePlayersBox.innerHTML = "No players online";
@@ -825,7 +1021,9 @@ function renderOnlinePlayers(players) {
 
       pendingInviteTargetId = player.id;
       pendingInviteTargetName = player.name || "player";
-      onlineInfo.textContent = `Invitation sent to ${pendingInviteTargetName}.`;
+      if (onlineInfo) {
+        onlineInfo.textContent = `Invitation sent to ${pendingInviteTargetName}.`;
+      }
 
       renderOnlinePlayers(onlinePlayers);
 
@@ -855,6 +1053,15 @@ function renderPublicMatches(matches) {
   }
 
   publicMatches = uniqueMatches;
+
+  const matchesStatus = document.getElementById("matchesStatus");
+if (matchesStatus) {
+  matchesStatus.textContent = publicMatches.length
+    ? `${publicMatches.length} public match(es)`
+    : "No public matches";
+}
+
+  if (!publicMatchesBox) return;
 
   if (!publicMatches.length) {
     publicMatchesBox.innerHTML = "No public matches";
@@ -893,7 +1100,7 @@ function renderPublicMatches(matches) {
 
         watchingMatchId = match.id;
         isWatching = true;
-        leaveMatchButton.textContent = "Leave Watch";
+        if (leaveMatchButton) leaveMatchButton.textContent = "Leave Watch";
 
         socket.emit("watchMatch", { matchId: match.id });
         renderPublicMatches(publicMatches);
@@ -944,15 +1151,15 @@ function initSocket() {
   });
 
   socket.on("inviteSent", () => {
-    if (pendingInviteTargetName) {
+    if (pendingInviteTargetName && onlineInfo) {
       onlineInfo.textContent = `Invitation sent to ${pendingInviteTargetName}.`;
     }
   });
 
   socket.on("matchInvite", ({ fromId, fromName }) => {
     currentInviteFrom = fromId;
-    inviteText.textContent = `${fromName} wants to play with you`;
-    inviteBox.style.display = "block";
+    if (inviteText) inviteText.textContent = `${fromName} wants to play with you`;
+    if (inviteBox) inviteBox.style.display = "block";
   });
 
   socket.on("errorMessage", (message) => {
@@ -964,7 +1171,7 @@ function initSocket() {
       pendingInviteTargetId = null;
       pendingInviteTargetName = "";
       renderOnlinePlayers(onlinePlayers);
-      onlineInfo.textContent = message;
+      if (onlineInfo) onlineInfo.textContent = message;
       return;
     }
 
@@ -1038,6 +1245,7 @@ function initSocket() {
     pendingInviteTargetName = "";
 
     myColor = color;
+    resetMatchScore();
     currentBlackName = blackName || (color === "black" ? myPlayerName : opponentName || "Black");
     currentWhiteName = whiteName || (color === "white" ? myPlayerName : opponentName || "White");
 
@@ -1166,7 +1374,7 @@ function initSocket() {
     unlockBoard();
 
     resetButton.textContent = "Restart";
-resetButton.style.background = "";
+    resetButton.style.background = "";
 
     currentBlackName = blackName || currentBlackName;
     currentWhiteName = whiteName || currentWhiteName;
@@ -1205,8 +1413,9 @@ resetButton.style.background = "";
     board.classList.remove("spectator-board");
     unlockBoard();
 
-    leaveMatchButton.textContent = "End Match";
+    if (leaveMatchButton) leaveMatchButton.textContent = "End Match";
 
+    resetMatchScore();
     resetGame();
   });
 
@@ -1218,15 +1427,16 @@ resetButton.style.background = "";
     unlockBoard();
 
     const shareContainer = document.getElementById("shareContainer");
-if (shareContainer) {
-  shareContainer.style.display = "none";
-}
+    if (shareContainer) {
+      shareContainer.style.display = "none";
+    }
 
     myColor = null;
     gameOver = true;
     currentPlayer = "black";
     currentBlackName = "Black";
     currentWhiteName = "White";
+    resetMatchScore();
 
     grid.fill(null);
     lastMoveIndex = null;
@@ -1248,7 +1458,10 @@ if (shareContainer) {
 function resetGame() {
   resetButton.textContent = "Restart";
   resetButton.style.background = "";
-  leaveMatchButton.textContent = "End Match";
+
+  if (leaveMatchButton) {
+    leaveMatchButton.textContent = "End Match";
+  }
 
   if (isWatching && socket) {
     socket.emit("leaveWatch");
@@ -1261,8 +1474,24 @@ function resetGame() {
   watchingMatchId = null;
   resetButton.style.display = "inline-block";
 
-  currentBlackName = "Black";
-  currentWhiteName = "White";
+  refreshPlayerNames();
+
+  if (modeSelect.value !== "online") {
+  if (onlineInfo) {
+    onlineInfo.textContent = 'Select "Online Multiplayer" mode to find players.';
+  }
+
+  if (onlinePlayersBox) {
+    onlinePlayersBox.innerHTML = "No players online";
+  }
+
+  if (publicMatchesBox) {
+    publicMatchesBox.innerHTML = "No public matches";
+  }
+
+  isOnlineRegistered = false;
+  myColor = null;
+}
 
   grid.fill(null);
   lastMoveIndex = null;
@@ -1275,6 +1504,11 @@ function resetGame() {
   const shareContainer = document.getElementById("shareContainer");
   if (shareContainer) {
     shareContainer.style.display = "none";
+  }
+
+  if (scoreText) {
+    scoreText.textContent =
+      `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
   }
 
   if (modeSelect.value === "online") {
@@ -1293,86 +1527,131 @@ function resetGame() {
     maybePlayAI();
   } else {
     currentPlayer = "black";
-    status.textContent = "Turn : Black";
+    status.textContent = `Turn : ${currentBlackName}`;
   }
 }
 
 // ----------------- BUTTONS -----------------
 resetButton.addEventListener("click", resetGame);
-modeSelect.addEventListener("change", resetGame);
+modeSelect.addEventListener("change", () => {
+  resetGame();
+
+  if (onlineInfo) {
+    if (modeSelect.value === "online") {
+      onlineInfo.textContent = 'Enter your name and click "Find a player" to appear online.';
+    } else {
+      onlineInfo.textContent = 'Select "Online Multiplayer" mode to find players.';
+    }
+  }
+});
 firstPlayerSelect.addEventListener("change", resetGame);
 
-leaveMatchButton.addEventListener("click", () => {
-  if (!socket) return;
-
-  if (isWatching) {
-    socket.emit("leaveWatch");
-    document.body.classList.remove("watching-mode");
-    board.classList.remove("spectator-board");
-    unlockBoard();
-    leaveMatchButton.textContent = "End Match";
-    isWatching = false;
-    watchingMatchId = null;
-    resetGame();
-    return;
-  }
-
-  socket.emit("leaveMatch");
+if (challengeBtn) {
+  challengeBtn.addEventListener("click", () => {
+  window.location.href = "challenge.html";
 });
+}
 
-acceptInviteButton.addEventListener("click", () => {
-  if (!socket || !currentInviteFrom) return;
+if (leaveMatchButton) {
+  leaveMatchButton.addEventListener("click", () => {
+    if (!socket) return;
 
-  socket.emit("acceptInvite", { fromId: currentInviteFrom });
-  inviteBox.style.display = "none";
-  currentInviteFrom = null;
-});
+    if (isWatching) {
+      socket.emit("leaveWatch");
+      document.body.classList.remove("watching-mode");
+      board.classList.remove("spectator-board");
+      unlockBoard();
+      leaveMatchButton.textContent = "End Match";
+      isWatching = false;
+      watchingMatchId = null;
+      resetGame();
+      return;
+    }
 
-declineInviteButton.addEventListener("click", () => {
-  if (!socket || !currentInviteFrom) return;
+    socket.emit("leaveMatch");
+  });
+}
 
-  socket.emit("declineInvite", { fromId: currentInviteFrom });
-  inviteBox.style.display = "none";
-  currentInviteFrom = null;
-});
+if (acceptInviteButton) {
+  acceptInviteButton.addEventListener("click", () => {
+    if (!socket || !currentInviteFrom) return;
 
-goOnlineButton.addEventListener("click", () => {
-  const mode = modeSelect.value;
-  const name = playerNameInput.value.trim();
+    socket.emit("acceptInvite", { fromId: currentInviteFrom });
 
-  if (mode !== "online") {
-    alert('Please select "Online Multiplayer" mode first.');
-    return;
-  }
+    if (inviteBox) {
+      inviteBox.style.display = "none";
+    }
 
-  if (!name) {
-    alert("Please enter your name before going online.");
-    return;
-  }
+    currentInviteFrom = null;
+  });
+}
 
-  if (!socket) {
-    alert("Online server is not ready yet.");
-    return;
-  }
+if (declineInviteButton) {
+  declineInviteButton.addEventListener("click", () => {
+    if (!socket || !currentInviteFrom) return;
 
-  myPlayerName = name;
-  isOnlineRegistered = true;
-  myColor = null;
+    socket.emit("declineInvite", { fromId: currentInviteFrom });
 
-  socket.emit("registerOnlinePlayer", { name });
+    if (inviteBox) {
+      inviteBox.style.display = "none";
+    }
 
-  onlineInfo.textContent = `You are online as ${name}.`;
-});
+    currentInviteFrom = null;
+  });
+}
+
+if (goOnlineButton) {
+  goOnlineButton.addEventListener("click", () => {
+    const mode = modeSelect.value;
+    const name = playerNameInput ? playerNameInput.value.trim() : "";
+
+    if (mode !== "online") {
+      alert('Please select "Online Multiplayer" mode first.');
+      return;
+    }
+
+    if (!name) {
+      alert("Please enter your name before going online.");
+      return;
+    }
+
+    if (!socket) {
+      alert("Online server is not ready yet.");
+      return;
+    }
+
+    myPlayerName = name;
+    myColor = null;
+
+    if (!isOnlineRegistered) {
+      socket.emit("registerOnlinePlayer", { name });
+      isOnlineRegistered = true;
+    }
+
+    if (onlineInfo) {
+      onlineInfo.textContent = `You are online as ${name}. Choose a player or watch a public match.`;
+    }
+
+    if (onlinePlayersBox) {
+      onlinePlayersBox.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
 
 // ----------------- START -----------------
 document.addEventListener("DOMContentLoaded", () => {
   initWorker();
   initSocket();
   initOnlineUI();
+  initCollapsiblePanels();
   resetGame();
 
   if (chatContent) {
     chatContent.style.display = "none";
+  }
+
+  if (isChallengeMode === "true") {
+    launchChallengeMode();
   }
 });
 
@@ -1411,6 +1690,19 @@ if (shareSiteBtn) {
   });
 }
 
+function initCollapsiblePanels() {
+  const toggles = document.querySelectorAll(".collapse-toggle");
+
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const box = toggle.closest(".collapsible-box");
+      if (!box) return;
+
+      box.classList.toggle("open");
+    });
+  });
+}
+
 async function generateShareImage(winnerName) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -1418,27 +1710,22 @@ async function generateShareImage(winnerName) {
   canvas.width = 1080;
   canvas.height = 1400;
 
-  // Background
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Title
   ctx.fillStyle = "#111827";
   ctx.font = "bold 60px Arial";
   ctx.textAlign = "center";
   ctx.fillText("GOMOKU ONLINE", 540, 100);
 
-  // Subtitle
   ctx.fillStyle = "#2563eb";
   ctx.font = "bold 34px Arial";
   ctx.fillText("Can you beat me? 😈", 540, 155);
 
-  // Winner
   ctx.fillStyle = "#111827";
   ctx.font = "36px Arial";
   ctx.fillText(`Winner: ${winnerName}`, 540, 220);
 
-  // Score box
   ctx.fillStyle = "#f3f4f6";
   ctx.fillRect(180, 260, 720, 90);
 
@@ -1454,8 +1741,6 @@ async function generateShareImage(winnerName) {
     335
   );
 
-  // Capture board
-  const board = document.getElementById("board");
   const boardCanvas = await html2canvas(board, {
     backgroundColor: null,
     scale: 2
@@ -1463,13 +1748,11 @@ async function generateShareImage(winnerName) {
 
   ctx.drawImage(boardCanvas, 140, 400, 800, 800);
 
-  // Footer
   ctx.fillStyle = "#6b7280";
   ctx.font = "28px Arial";
   ctx.textAlign = "center";
   ctx.fillText("Play free online with other players", 540, 1220);
 
-  // Link
   ctx.fillStyle = "#111827";
   ctx.font = "26px Arial";
   ctx.fillText("Play now:", 540, 1280);
@@ -1478,7 +1761,6 @@ async function generateShareImage(winnerName) {
   ctx.font = "bold 28px Arial";
   ctx.fillText("gomoku-morpion-5-online.onrender.com", 540, 1335);
 
-  // Download
   const link = document.createElement("a");
   link.download = "gomoku-match.png";
   link.href = canvas.toDataURL("image/png");

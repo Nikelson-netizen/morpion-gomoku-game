@@ -8,15 +8,15 @@
   <meta name="description" content="Play Gomoku online with real players. Train your brain and strategy.">
 
   <meta property="og:title" content="Can you beat me? 🔥 Gomoku Online">
-<meta property="og:description" content="Play Gomoku online with real players. Challenge your friends and win.">
-<meta property="og:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png">
-<meta property="og:url" content="https://gomoku-morpion-5-online.onrender.com/">
-<meta property="og:type" content="website">
+  <meta property="og:description" content="Play Gomoku online with real players. Challenge your friends and win.">
+  <meta property="og:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png">
+  <meta property="og:url" content="https://gomoku-morpion-5-online.onrender.com/">
+  <meta property="og:type" content="website">
 
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Can you beat me? 🔥 Gomoku Online">
-<meta name="twitter:description" content="Play Gomoku online with real players. Challenge your friends and win.">
-<meta name="twitter:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Can you beat me? 🔥 Gomoku Online">
+  <meta name="twitter:description" content="Play Gomoku online with real players. Challenge your friends and win.">
+  <meta name="twitter:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png">
 
   <link rel="shortcut icon" href="logo.png">
   <link rel="stylesheet" href="style.css">
@@ -28,7 +28,7 @@
       <header class="top-header">
         <img src="logo.png" alt="Gomoku Logo" class="logo">
         <h1>jeu de morpion à 5 / Gomoku 5 Five in a Row</h1>
-        <h2 id="status">Turn: Black</h2>
+        <h2 id="status">Turn : Black</h2>
       </header>
 
       <section class="controls">
@@ -68,27 +68,15 @@
             placeholder="Enter your name"
             maxlength="20"
             autocomplete="off"
-          >
+          />
         </div>
 
-        <div class="control-group button-group">
-          <label class="hidden-label">Online</label>
-          <button id="goOnline" type="button">🔍 Find a player</button>
-        </div>
-
-        <div class="control-group button-group">
-          <label class="hidden-label">Share</label>
+        <div class="buttons-row">
+          <button id="goOnline" type="button">🔎 Find a player</button>
           <button id="shareSiteBtn" type="button">🔗 Share Site</button>
-        </div>
-
-        <div class="control-group button-group">
-          <label class="hidden-label">Action</label>
           <button id="reset" type="button">Restart</button>
-        </div>
-
-        <div class="control-group button-group">
-          <label class="hidden-label">Match</label>
-          <button id="leaveMatch" type="button" class="online-btn">End Match</button>
+          <button id="leaveMatch" type="button">End Match</button>
+          <button id="challengeBtn" type="button">🔥 Challenge Me</button>
         </div>
       </section>
 
@@ -101,17 +89,37 @@
       </section>
 
       <section class="online-panel">
-        <div class="online-box">
-          <h3>Players Online</h3>
-          <div id="onlineInfo">Enter your name and click "Go Online" to appear online.</div>
-          <div id="onlinePlayers">No players online</div>
-        </div>
+  <div class="online-box collapsible-box">
+    <button class="collapse-toggle" type="button" data-target="playersPanel">
+      <span>Players Online</span>
+      <span class="collapse-icon">+</span>
+    </button>
 
-        <div class="online-box">
-          <h3>Public Matches</h3>
-          <div id="publicMatches">No public matches</div>
-        </div>
-      </section>
+    <div class="panel-status" id="playersStatus">
+      Select "Online Multiplayer" mode to find players.
+    </div>
+
+    <div class="collapse-content" id="playersPanel">
+      <div id="onlineInfo">Enter your name and click "Find a player" to appear online.</div>
+      <div id="onlinePlayers">No players online</div>
+    </div>
+  </div>
+
+  <div class="online-box collapsible-box">
+    <button class="collapse-toggle" type="button" data-target="matchesPanel">
+      <span>Public Matches</span>
+      <span class="collapse-icon">+</span>
+    </button>
+
+    <div class="panel-status" id="matchesStatus">
+      No public matches
+    </div>
+
+    <div class="collapse-content" id="matchesPanel">
+      <div id="publicMatches">No public matches</div>
+    </div>
+  </div>
+</section>
 
       <div id="scoreBoard" class="score-board">
         <div class="score-title">MATCH SCORE</div>
@@ -129,7 +137,6 @@
     </div>
   </div>
 
-  <!-- PETIT CHAT UNIQUE -->
   <div id="chatContainer">
     <div id="chatHeader">
       💬 Chat <span id="chatBadge">●</span>
@@ -146,9 +153,7 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-  
   <script src="script.js"></script>
 </body>
 </html>
