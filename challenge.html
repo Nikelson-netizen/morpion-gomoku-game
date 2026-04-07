@@ -6,14 +6,12 @@
 
   <link rel="shortcut icon" href="logo.png" />
 
-  <!-- Open Graph -->
   <meta property="og:title" content="🧠 Challenge your brain - Gomoku Online" />
   <meta property="og:description" content="Play Gomoku online with real players. Think you're smarter? 😏 Join the challenge now!" />
   <meta property="og:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png" />
   <meta property="og:url" content="https://gomoku-morpion-5-online.onrender.com/" />
   <meta property="og:type" content="website" />
 
-  <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="🧠 Challenge your brain - Gomoku Online" />
   <meta name="twitter:description" content="Play Gomoku online with real players. Think you're smarter? 😏 Join the challenge now!" />
@@ -36,7 +34,6 @@
     </header>
 
     <main class="challenge-grid">
-      <!-- Player Summary visible -->
       <section class="card player-card player-summary-card">
         <div class="player-top">
           <div id="challengeAvatar" class="avatar">P</div>
@@ -59,7 +56,6 @@
         </div>
       </section>
 
-      <!-- Challenge Actions -->
       <section class="card actions-card collapsible-card">
         <button type="button" class="collapse-toggle" data-target="actionsContent">
           <span>⚔️ Challenge Actions</span>
@@ -70,11 +66,9 @@
           <div class="actions-list">
             <button id="startChallengeBtn" class="main-action-btn">Start Challenge</button>
             <button id="simulateWinBtn" class="secondary-btn dev-only">Simulate Win</button>
-<button id="simulateLossBtn" class="secondary-btn dev-only">Simulate Loss</button>
-<button id="simulateHardWinBtn" class="secondary-btn dev-only">Hard Win (AI started)</button>
-
-<!-- ✅ celui-ci reste NORMAL -->
-<button id="resetChallengeDataBtn" class="danger-btn">Reset Challenge Data</button>
+            <button id="simulateLossBtn" class="secondary-btn dev-only">Simulate Loss</button>
+            <button id="simulateHardWinBtn" class="secondary-btn dev-only">Hard Win (AI started)</button>
+            <button id="resetChallengeDataBtn" class="danger-btn">Reset My Stats</button>
             <button id="shareChallengeBtn" class="share-btn">🟢 Share Challenge</button>
           </div>
 
@@ -84,7 +78,6 @@
         </div>
       </section>
 
-      <!-- Player Profile -->
       <section class="card player-card collapsible-card">
         <button type="button" class="collapse-toggle" data-target="profileContent">
           <span>👤 Player Profile</span>
@@ -126,7 +119,6 @@
         </div>
       </section>
 
-      <!-- Leaderboard -->
       <section class="card leaderboard-card collapsible-card">
         <button type="button" class="collapse-toggle" data-target="leaderboardContent">
           <span>🏆 Leaderboard</span>
@@ -134,11 +126,11 @@
         </button>
 
         <div id="leaderboardContent" class="collapse-content">
+          <div id="leaderboardLevelTabs" class="leaderboard-level-tabs"></div>
           <div id="leaderboardList" class="leaderboard-list"></div>
         </div>
       </section>
 
-      <!-- Challenge History under Leaderboard -->
       <section class="card history-card collapsible-card">
         <button type="button" class="collapse-toggle" data-target="historyContent">
           <span>🕘 Challenge History</span>
@@ -150,7 +142,6 @@
         </div>
       </section>
 
-      <!-- Challenge Game -->
       <section class="card challenge-game-card">
         <h2 class="challenge-title">🎮 Play Challenge</h2>
 

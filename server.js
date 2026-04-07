@@ -40,15 +40,18 @@ const publicMatches = [];
 const pendingInvites = new Map();
 
 /* =========================
-   CHALLENGE LEADERBOARD
+   CHALLENGE LEADERBOARD BY LEVEL
 ========================= */
 
-const challengeLeaderboard = [
-  { name: "Kelly", points: 1250, online: false },
-  { name: "Alex", points: 1180, online: false },
-  { name: "Sam", points: 1100, online: false },
-  { name: "Jordan", points: 1040, online: false }
-];
+const VALID_LEVELS = ["1", "2", "3", "4", "5"];
+
+const challengeLeaderboards = {
+  "1": [],
+  "2": [],
+  "3": [],
+  "4": [],
+  "5": []
+};
 
 function normalizePlayerName(name) {
   return String(name || "")
@@ -57,45 +60,53 @@ function normalizePlayerName(name) {
     .slice(0, MAX_NAME_LENGTH);
 }
 
-function sortChallengeLeaderboard() {
-  challengeLeaderboard.sort((a, b) => b.points - a.points);
+function normalizeLevel(level) {
+  const clean = String(level || "").trim();
+  return VALID_LEVELS.includes(clean) ? clean : "2";
 }
 
-function getChallengeLeaderboardView() {
-  sortChallengeLeaderboard();
-
-  return challengeLeaderboard.map((player, index) => ({
-    rank: index + 1,
-    name: player.name,
-    points: player.points,
-    online: !!player.online
-  }));
+function getLevelBoard(level) {
+  const cleanLevel = normalizeLevel(level);
+  return challengeLeaderboards[cleanLevel];
 }
 
-function findChallengePlayer(name) {
+function sortLevelBoard(level) {
+  getLevelBoard(level).sort((a, b) => b.points - a.points);
+}
+
+function sortAllChallengeBoards() {
+  VALID_LEVELS.forEach(sortLevelBoard);
+}
+
+function findChallengePlayer(level, name) {
+  const board = getLevelBoard(level);
   const cleanName = normalizePlayerName(name);
   if (!cleanName) return null;
 
   return (
-    challengeLeaderboard.find(
+    board.find(
       (player) => player.name.toLowerCase() === cleanName.toLowerCase()
     ) || null
   );
 }
 
-function upsertChallengePlayer(name, updates = {}) {
+function upsertChallengePlayer(level, name, updates = {}) {
+  const cleanLevel = normalizeLevel(level);
   const cleanName = normalizePlayerName(name);
   if (!cleanName) return null;
 
-  let player = findChallengePlayer(cleanName);
+  const board = getLevelBoard(cleanLevel);
+
+  let player = findChallengePlayer(cleanLevel, cleanName);
 
   if (!player) {
     player = {
       name: cleanName,
       points: 0,
-      online: false
+      online: false,
+      level: cleanLevel
     };
-    challengeLeaderboard.push(player);
+    board.push(player);
   }
 
   if (typeof updates.points === "number" && Number.isFinite(updates.points)) {
@@ -106,20 +117,47 @@ function upsertChallengePlayer(name, updates = {}) {
     player.online = updates.online;
   }
 
-  sortChallengeLeaderboard();
+  player.level = cleanLevel;
+
+  sortLevelBoard(cleanLevel);
   return player;
 }
 
-function setChallengePlayerOffline(name) {
-  const player = findChallengePlayer(name);
+function setChallengePlayerOffline(level, name) {
+  const player = findChallengePlayer(level, name);
   if (!player) return;
 
   player.online = false;
-  sortChallengeLeaderboard();
+  sortLevelBoard(level);
 }
 
-function broadcastChallengeLeaderboard() {
-  io.emit("challengeLeaderboard", getChallengeLeaderboardView());
+function getChallengeLeaderboardView(level) {
+  const cleanLevel = normalizeLevel(level);
+  sortLevelBoard(cleanLevel);
+
+  return getLevelBoard(cleanLevel).map((player, index) => ({
+    rank: index + 1,
+    name: player.name,
+    points: player.points,
+    online: !!player.online,
+    level: cleanLevel
+  }));
+}
+
+function getAllChallengeLeaderboardViews() {
+  const result = {};
+  VALID_LEVELS.forEach((level) => {
+    result[level] = getChallengeLeaderboardView(level);
+  });
+  return result;
+}
+
+function broadcastChallengeLeaderboard(level) {
+  const cleanLevel = normalizeLevel(level);
+  io.emit("challengeLeaderboard", {
+    level: cleanLevel,
+    leaderboard: getChallengeLeaderboardView(cleanLevel)
+  });
 }
 
 /* =========================
@@ -146,7 +184,6 @@ function logStats() {
   console.log("🏁 Games finished   :", stats.totalGamesFinished);
   console.log("👀 Watch joins      :", stats.totalWatchJoins);
   console.log("📅 Today connections:", stats.dailyConnections[getToday()] || 0);
-  console.log("🏆 Challenge players:", challengeLeaderboard.length);
   console.log("============================");
 }
 
@@ -462,34 +499,47 @@ function canPerformAction(socket, key, limitMs) {
 ========================= */
 
 app.get("/api/challenge/leaderboard", (req, res) => {
+  const level = normalizeLevel(req.query.level || "2");
+
   return res.json({
     success: true,
-    leaderboard: getChallengeLeaderboardView()
+    level,
+    leaderboard: getChallengeLeaderboardView(level)
+  });
+});
+
+app.get("/api/challenge/leaderboards", (req, res) => {
+  return res.json({
+    success: true,
+    leaderboards: getAllChallengeLeaderboardViews()
   });
 });
 
 app.post("/api/challenge/leaderboard/upsert", (req, res) => {
-  const { name, points, online } = req.body || {};
+  const { name, points, online, level } = req.body || {};
 
   const cleanName = normalizePlayerName(name);
-  if (!cleanName) {
+  const cleanLevel = normalizeLevel(level);
+
+  if (!cleanName || cleanName === "Player") {
     return res.status(400).json({
       success: false,
-      message: "Player name is required."
+      message: "Valid player name is required."
     });
   }
 
-  const updatedPlayer = upsertChallengePlayer(cleanName, {
+  const updatedPlayer = upsertChallengePlayer(cleanLevel, cleanName, {
     points: typeof points === "number" ? points : undefined,
     online: typeof online === "boolean" ? online : undefined
   });
 
-  broadcastChallengeLeaderboard();
+  broadcastChallengeLeaderboard(cleanLevel);
 
   return res.json({
     success: true,
     player: updatedPlayer,
-    leaderboard: getChallengeLeaderboardView()
+    level: cleanLevel,
+    leaderboard: getChallengeLeaderboardView(cleanLevel)
   });
 });
 
@@ -511,39 +561,59 @@ io.on("connection", (socket) => {
 
   socket.matchId = null;
   socket.challengePlayerName = null;
+  socket.challengeLevel = null;
 
   /* ===== CHALLENGE SOCKET EVENTS ===== */
 
-  socket.on("registerChallengePlayer", ({ name }) => {
+  socket.on("registerChallengePlayer", ({ name, level }) => {
     if (!canPerformAction(socket, "registerChallengePlayer", 600)) {
       return;
     }
 
     const cleanName = normalizePlayerName(name);
-    if (!cleanName) return;
+    const cleanLevel = normalizeLevel(level);
+
+    if (!cleanName || cleanName === "Player") return;
+
+    if (
+      socket.challengePlayerName &&
+      socket.challengeLevel &&
+      (
+        socket.challengePlayerName.toLowerCase() !== cleanName.toLowerCase() ||
+        socket.challengeLevel !== cleanLevel
+      )
+    ) {
+      setChallengePlayerOffline(socket.challengeLevel, socket.challengePlayerName);
+      broadcastChallengeLeaderboard(socket.challengeLevel);
+    }
 
     socket.challengePlayerName = cleanName;
+    socket.challengeLevel = cleanLevel;
 
-    upsertChallengePlayer(cleanName, { online: true });
-    broadcastChallengeLeaderboard();
+    upsertChallengePlayer(cleanLevel, cleanName, { online: true });
+    broadcastChallengeLeaderboard(cleanLevel);
   });
 
-  socket.on("updateChallengePoints", ({ name, points }) => {
+  socket.on("updateChallengePoints", ({ name, points, level }) => {
     if (!canPerformAction(socket, "updateChallengePoints", 300)) {
       return;
     }
 
     const cleanName = normalizePlayerName(name);
-    if (!cleanName) return;
+    const cleanLevel = normalizeLevel(level);
+
+    if (!cleanName || cleanName === "Player") return;
     if (typeof points !== "number" || !Number.isFinite(points)) return;
 
     socket.challengePlayerName = cleanName;
-    upsertChallengePlayer(cleanName, {
+    socket.challengeLevel = cleanLevel;
+
+    upsertChallengePlayer(cleanLevel, cleanName, {
       points: Math.floor(points),
       online: true
     });
 
-    broadcastChallengeLeaderboard();
+    broadcastChallengeLeaderboard(cleanLevel);
   });
 
   /* ===== CHAT ===== */
@@ -973,9 +1043,9 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("🔴 User disconnected:", socket.id);
 
-    if (socket.challengePlayerName) {
-      setChallengePlayerOffline(socket.challengePlayerName);
-      broadcastChallengeLeaderboard();
+    if (socket.challengePlayerName && socket.challengeLevel) {
+      setChallengePlayerOffline(socket.challengeLevel, socket.challengePlayerName);
+      broadcastChallengeLeaderboard(socket.challengeLevel);
     }
 
     cleanupDisconnectedPlayer(socket.id);
