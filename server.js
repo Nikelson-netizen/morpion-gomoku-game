@@ -5,6 +5,7 @@ const path = require("path");
 
 const app = express();
 app.disable("x-powered-by");
+app.use(express.json());
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -38,6 +39,93 @@ const onlinePlayers = new Map();
 const publicMatches = [];
 const pendingInvites = new Map();
 
+/* =========================
+   CHALLENGE LEADERBOARD
+========================= */
+
+const challengeLeaderboard = [
+  { name: "Kelly", points: 1250, online: false },
+  { name: "Alex", points: 1180, online: false },
+  { name: "Sam", points: 1100, online: false },
+  { name: "Jordan", points: 1040, online: false }
+];
+
+function normalizePlayerName(name) {
+  return String(name || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_NAME_LENGTH);
+}
+
+function sortChallengeLeaderboard() {
+  challengeLeaderboard.sort((a, b) => b.points - a.points);
+}
+
+function getChallengeLeaderboardView() {
+  sortChallengeLeaderboard();
+
+  return challengeLeaderboard.map((player, index) => ({
+    rank: index + 1,
+    name: player.name,
+    points: player.points,
+    online: !!player.online
+  }));
+}
+
+function findChallengePlayer(name) {
+  const cleanName = normalizePlayerName(name);
+  if (!cleanName) return null;
+
+  return (
+    challengeLeaderboard.find(
+      (player) => player.name.toLowerCase() === cleanName.toLowerCase()
+    ) || null
+  );
+}
+
+function upsertChallengePlayer(name, updates = {}) {
+  const cleanName = normalizePlayerName(name);
+  if (!cleanName) return null;
+
+  let player = findChallengePlayer(cleanName);
+
+  if (!player) {
+    player = {
+      name: cleanName,
+      points: 0,
+      online: false
+    };
+    challengeLeaderboard.push(player);
+  }
+
+  if (typeof updates.points === "number" && Number.isFinite(updates.points)) {
+    player.points = Math.max(0, Math.floor(updates.points));
+  }
+
+  if (typeof updates.online === "boolean") {
+    player.online = updates.online;
+  }
+
+  sortChallengeLeaderboard();
+  return player;
+}
+
+function setChallengePlayerOffline(name) {
+  const player = findChallengePlayer(name);
+  if (!player) return;
+
+  player.online = false;
+  sortChallengeLeaderboard();
+}
+
+function broadcastChallengeLeaderboard() {
+  io.emit("challengeLeaderboard", getChallengeLeaderboardView());
+}
+
+/* =========================
+   STATS
+========================= */
+
 const stats = {
   totalConnections: 0,
   totalGamesStarted: 0,
@@ -58,8 +146,13 @@ function logStats() {
   console.log("🏁 Games finished   :", stats.totalGamesFinished);
   console.log("👀 Watch joins      :", stats.totalWatchJoins);
   console.log("📅 Today connections:", stats.dailyConnections[getToday()] || 0);
+  console.log("🏆 Challenge players:", challengeLeaderboard.length);
   console.log("============================");
 }
+
+/* =========================
+   GAME HELPERS
+========================= */
 
 const WIN_DIRS = [
   [1, 0],
@@ -131,6 +224,10 @@ function sanitizeChatMessage(msg) {
 function isValidIndex(index) {
   return Number.isInteger(index) && index >= 0 && index < BOARD_CELLS;
 }
+
+/* =========================
+   ONLINE PLAYERS / MATCHES
+========================= */
 
 function buildPlayersForSocket(socketId) {
   return [...onlinePlayers.entries()].map(([id, p]) => ({
@@ -343,6 +440,10 @@ function cleanupDisconnectedPlayer(socketId) {
   broadcastMatches();
 }
 
+/* =========================
+   RATE LIMIT
+========================= */
+
 function canPerformAction(socket, key, limitMs) {
   if (!socket._rateLimits) socket._rateLimits = {};
   const now = Date.now();
@@ -355,6 +456,46 @@ function canPerformAction(socket, key, limitMs) {
   socket._rateLimits[key] = now;
   return true;
 }
+
+/* =========================
+   API ROUTES - CHALLENGE
+========================= */
+
+app.get("/api/challenge/leaderboard", (req, res) => {
+  return res.json({
+    success: true,
+    leaderboard: getChallengeLeaderboardView()
+  });
+});
+
+app.post("/api/challenge/leaderboard/upsert", (req, res) => {
+  const { name, points, online } = req.body || {};
+
+  const cleanName = normalizePlayerName(name);
+  if (!cleanName) {
+    return res.status(400).json({
+      success: false,
+      message: "Player name is required."
+    });
+  }
+
+  const updatedPlayer = upsertChallengePlayer(cleanName, {
+    points: typeof points === "number" ? points : undefined,
+    online: typeof online === "boolean" ? online : undefined
+  });
+
+  broadcastChallengeLeaderboard();
+
+  return res.json({
+    success: true,
+    player: updatedPlayer,
+    leaderboard: getChallengeLeaderboardView()
+  });
+});
+
+/* =========================
+   SOCKET.IO
+========================= */
 
 io.on("connection", (socket) => {
   stats.totalConnections++;
@@ -369,6 +510,43 @@ io.on("connection", (socket) => {
   logStats();
 
   socket.matchId = null;
+  socket.challengePlayerName = null;
+
+  /* ===== CHALLENGE SOCKET EVENTS ===== */
+
+  socket.on("registerChallengePlayer", ({ name }) => {
+    if (!canPerformAction(socket, "registerChallengePlayer", 600)) {
+      return;
+    }
+
+    const cleanName = normalizePlayerName(name);
+    if (!cleanName) return;
+
+    socket.challengePlayerName = cleanName;
+
+    upsertChallengePlayer(cleanName, { online: true });
+    broadcastChallengeLeaderboard();
+  });
+
+  socket.on("updateChallengePoints", ({ name, points }) => {
+    if (!canPerformAction(socket, "updateChallengePoints", 300)) {
+      return;
+    }
+
+    const cleanName = normalizePlayerName(name);
+    if (!cleanName) return;
+    if (typeof points !== "number" || !Number.isFinite(points)) return;
+
+    socket.challengePlayerName = cleanName;
+    upsertChallengePlayer(cleanName, {
+      points: Math.floor(points),
+      online: true
+    });
+
+    broadcastChallengeLeaderboard();
+  });
+
+  /* ===== CHAT ===== */
 
   socket.on("sendMessage", (msg) => {
     if (!socket.matchId) return;
@@ -382,6 +560,8 @@ io.on("connection", (socket) => {
       message: cleanMessage
     });
   });
+
+  /* ===== ONLINE REGISTRATION ===== */
 
   socket.on("registerOnlinePlayer", ({ name }) => {
     if (!canPerformAction(socket, "registerOnlinePlayer", 1000)) {
@@ -412,6 +592,8 @@ io.on("connection", (socket) => {
     broadcastPlayers();
     broadcastMatches();
   });
+
+  /* ===== INVITES ===== */
 
   socket.on("invitePlayer", ({ targetId }) => {
     if (!canPerformAction(socket, "invitePlayer", 1000)) {
@@ -572,6 +754,8 @@ io.on("connection", (socket) => {
     io.to(fromId).emit("errorMessage", "Invitation declined.");
   });
 
+  /* ===== WATCH ===== */
+
   socket.on("watchMatch", ({ matchId }) => {
     if (!canPerformAction(socket, "watchMatch", 500)) {
       socket.emit("errorMessage", "Please wait a moment.");
@@ -628,6 +812,8 @@ io.on("connection", (socket) => {
       }
     }
   });
+
+  /* ===== MOVES ===== */
 
   socket.on("playMove", ({ index }) => {
     if (!canPerformAction(socket, "playMove", 80)) {
@@ -694,6 +880,8 @@ io.on("connection", (socket) => {
     emitMatchState(match);
   });
 
+  /* ===== RESET MATCH ===== */
+
   socket.on("resetOnlineGame", () => {
     if (!canPerformAction(socket, "resetOnlineGame", 1000)) {
       socket.emit("errorMessage", "Please wait before restarting again.");
@@ -733,6 +921,8 @@ io.on("connection", (socket) => {
 
     emitMatchState(match);
   });
+
+  /* ===== LEAVE MATCH ===== */
 
   socket.on("leaveMatch", () => {
     if (!canPerformAction(socket, "leaveMatch", 500)) {
@@ -778,14 +968,27 @@ io.on("connection", (socket) => {
     broadcastMatches();
   });
 
+  /* ===== DISCONNECT ===== */
+
   socket.on("disconnect", () => {
     console.log("🔴 User disconnected:", socket.id);
+
+    if (socket.challengePlayerName) {
+      setChallengePlayerOffline(socket.challengePlayerName);
+      broadcastChallengeLeaderboard();
+    }
+
     cleanupDisconnectedPlayer(socket.id);
     console.log("👥 Players online:", onlinePlayers.size);
   });
 });
 
+/* =========================
+   START SERVER
+========================= */
+
 const PORT = process.env.PORT || 3002;
+
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

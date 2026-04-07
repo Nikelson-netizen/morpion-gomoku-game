@@ -31,6 +31,85 @@ const pageModeSelect = document.getElementById("mode");
 const STORAGE_KEY = "gomokuChallengeData";
 const isChallengePage = !!document.querySelector(".challenge-page");
 
+function getChallengeSocket() {
+  return typeof socket !== "undefined" ? socket : null;
+}
+
+function registerChallengeSocketListeners() {
+  const challengeSocket = getChallengeSocket();
+  if (!challengeSocket) return;
+
+  if (window.__challengeLeaderboardListenerBound) return;
+  window.__challengeLeaderboardListenerBound = true;
+
+  challengeSocket.on("challengeLeaderboard", (leaderboard) => {
+    if (!Array.isArray(leaderboard)) return;
+
+    challengeData.leaderboard = leaderboard.map((player) => ({
+      name: player.name,
+      points: player.points,
+      online: !!player.online
+    }));
+
+    saveChallengeData();
+    renderLeaderboard();
+  });
+}
+
+async function fetchChallengeLeaderboardFromServer() {
+  try {
+    const res = await fetch("/api/challenge/leaderboard");
+    const data = await res.json();
+
+    if (!data.success || !Array.isArray(data.leaderboard)) return;
+
+    challengeData.leaderboard = data.leaderboard.map((player) => ({
+      name: player.name,
+      points: player.points,
+      online: !!player.online
+    }));
+
+    saveChallengeData();
+    renderLeaderboard();
+  } catch (err) {
+    console.error("Failed to fetch challenge leaderboard:", err);
+  }
+}
+
+async function syncCurrentPlayerToServer() {
+  try {
+    const playerName = (
+      challengeData.playerName ||
+      localStorage.getItem("playerName") ||
+      "Player"
+    ).trim();
+
+    if (!playerName) return;
+
+    const currentPlayer = challengeData.leaderboard.find(
+      (p) => p.name.toLowerCase() === playerName.toLowerCase()
+    );
+
+    const pointsToSend = currentPlayer ? currentPlayer.points : (challengeData.points || 0);
+
+    await fetch("/api/challenge/leaderboard/upsert", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: playerName,
+        points: pointsToSend,
+        online: true
+      })
+    });
+
+    await fetchChallengeLeaderboardFromServer();
+  } catch (err) {
+    console.error("Failed to sync player to server:", err);
+  }
+}
+
 function getChallengeParamsFromURL() {
   const params = new URLSearchParams(window.location.search);
 
@@ -196,7 +275,6 @@ function cleanupLeaderboard() {
     const lower = name.toLowerCase();
     const points = Number.isFinite(player.points) ? player.points : 0;
 
-    // Nettoie les vieux faux noms tapés lettre par lettre à 0 pts
     if (!defaultNames.has(lower) && points === 0) {
       continue;
     }
@@ -299,12 +377,13 @@ function renderProfile() {
 }
 
 function renderLeaderboard() {
-  updateLeaderboardData();
-
   if (!leaderboardList) return;
+
   leaderboardList.innerHTML = "";
 
-  challengeData.leaderboard.forEach((player, index) => {
+  const sorted = [...challengeData.leaderboard].sort((a, b) => b.points - a.points);
+
+  sorted.forEach((player, index) => {
     const item = document.createElement("div");
     item.className = "leaderboard-item";
 
@@ -368,6 +447,17 @@ function getAiBonus(aiLevel) {
   return 0;
 }
 
+function syncPointsToServer() {
+  const challengeSocket = getChallengeSocket();
+
+  if (challengeSocket && challengeData.playerName) {
+    challengeSocket.emit("updateChallengePoints", {
+      name: challengeData.playerName,
+      points: challengeData.points
+    });
+  }
+}
+
 function applyLastChallengeResult() {
   const raw = localStorage.getItem("challengeResult");
   if (!raw) return;
@@ -394,13 +484,13 @@ function applyLastChallengeResult() {
 
     localStorage.removeItem("challengeResult");
     saveChallengeData();
+    syncPointsToServer();
   } catch (err) {
     console.error("Error reading challengeResult:", err);
   }
 }
 
 function renderAll() {
-  updateLeaderboardData();
   renderProfile();
   renderLeaderboard();
   renderHistory();
@@ -429,6 +519,7 @@ function handleWin({ aiStarted = false, onlineGame = false, fastWin = false, aiL
   );
 
   renderAll();
+  syncPointsToServer();
 }
 
 function handleLoss({ onlineGame = false, aiLevel = null } = {}) {
@@ -449,6 +540,7 @@ function handleLoss({ onlineGame = false, aiLevel = null } = {}) {
   );
 
   renderAll();
+  syncPointsToServer();
 }
 
 function startChallenge() {
@@ -474,6 +566,7 @@ function startChallenge() {
   );
 
   renderAll();
+  syncCurrentPlayerToServer();
 
   if (typeof resetGame === "function") {
     resetGame();
@@ -533,27 +626,38 @@ function patchChallengeGameSync() {
 function bindChallengePageControls() {
   if (!isChallengePage) return;
 
-  // reset du joueur courant à chaque refresh
   resetCurrentPlayerOnRefresh();
   renderAll();
 
   function saveFinalChallengeName() {
-    if (!pagePlayerNameInput) return;
+  if (!pagePlayerNameInput) return;
 
-    const name = pagePlayerNameInput.value.trim();
+  const name = pagePlayerNameInput.value.trim();
 
-    if (name) {
-      localStorage.setItem("challengePlayerName", name);
-      challengeData.playerName = name;
-      challengeData.online = true;
-    } else {
-      localStorage.removeItem("challengePlayerName");
-      challengeData.playerName = "Player";
-      challengeData.online = false;
+  if (name) {
+
+    // ✅ RESET si nouveau joueur
+    if (name !== challengeData.playerName) {
+      challengeData.points = 0;
+      challengeData.wins = 0;
+      challengeData.losses = 0;
+      challengeData.streak = 0;
+      challengeData.bestStreak = 0;
     }
 
-    renderAll();
+    localStorage.setItem("challengePlayerName", name);
+    challengeData.playerName = name;
+    challengeData.online = true;
+
+  } else {
+    localStorage.removeItem("challengePlayerName");
+    challengeData.playerName = "Player";
+    challengeData.online = false;
   }
+
+  renderAll();
+  syncCurrentPlayerToServer();
+}
 
   if (pagePlayerNameInput) {
     pagePlayerNameInput.addEventListener("input", () => {
@@ -567,7 +671,6 @@ function bindChallengePageControls() {
         challengeData.online = false;
       }
 
-      // Pendant qu'on tape, on met à jour seulement le profil du haut
       updateAvatar();
       renderProfile();
     });
@@ -676,15 +779,16 @@ if (resetChallengeDataBtn) {
 
     renderAll();
     resetRoundSyncFlag();
+    syncCurrentPlayerToServer();
   });
 }
 
 if (shareChallengeBtn) {
   shareChallengeBtn.addEventListener("click", async () => {
     const level = getStoredChallengeAiLevel();
-const first = getStoredChallengeFirstPlayer();
+    const first = getStoredChallengeFirstPlayer();
 
-const shareUrl = `https://gomoku-morpion-5-online.onrender.com/challenge.html?level=${level}&first=${first}`;
+    const shareUrl = `https://gomoku-morpion-5-online.onrender.com/challenge.html?level=${level}&first=${first}`;
 
     const shareText = `🟢 I'm dominating Gomoku right now.
 
@@ -811,6 +915,26 @@ async function generateChallengeImage() {
   });
 }
 
+document.addEventListener("DOMContentLoaded", async () => {
+  registerChallengeSocketListeners();
+
+  await fetchChallengeLeaderboardFromServer();
+
+  const playerName =
+    (challengeData.playerName || localStorage.getItem("playerName") || "Player").trim();
+
+  const challengeSocket = getChallengeSocket();
+  if (challengeSocket && playerName) {
+    challengeSocket.emit("registerChallengePlayer", { name: playerName });
+  }
+
+  await syncCurrentPlayerToServer();
+
+  renderProfile();
+  renderLeaderboard();
+  renderHistory();
+});
+
 function bindCollapseCards() {
   document.querySelectorAll(".collapse-toggle").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -830,7 +954,6 @@ window.renderHistoryChallenge = renderHistory;
 bindChallengePageControls();
 applyLastChallengeResult();
 
-// 🔥 AJOUT ICI
 const urlParams = getChallengeParamsFromURL();
 
 if (urlParams.level && pageAiLevelSelect) {
@@ -843,14 +966,12 @@ if (urlParams.first && pageFirstPlayerSelect) {
   localStorage.setItem("challengeFirstPlayer", urlParams.first);
 }
 
-// 🔥 ENSUITE render
 renderAll();
 
 patchChallengeGameSync();
 resetRoundSyncFlag();
 bindCollapseCards();
 
-// 🔓 Affiche les boutons dev seulement en local
 const isLocal =
   location.hostname === "localhost" ||
   location.hostname === "127.0.0.1";
