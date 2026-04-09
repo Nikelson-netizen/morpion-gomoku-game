@@ -1124,12 +1124,12 @@ async function generateChallengeImage() {
   canvas.width = 1080;
   canvas.height = 1080;
 
-  ctx.fillStyle ="ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#f7efd8";
+ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.textAlign = "center";
 
-  ctx.fillStyl = "#111";
+  ctx.fillStyl = "#edf0e3ef";
   ctx.font = "bold 62px Arial";
   ctx.fillText("GOMOKU", 540, 120);
 
@@ -1190,7 +1190,7 @@ async function generateChallengeImage() {
     logoSize,
     logoSize
   );
-  
+
   ctx.textAlign = "center";
 
 ctx.fillStyle = "#111";
