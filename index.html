@@ -72,6 +72,7 @@
         </div>
 
         <div class="buttons-row">
+          <button id="fbLoginBtn">Login with Facebook</button>
           <button id="goOnline" type="button">🔎 Find a player</button>
           <button id="shareSiteBtn" type="button">🔗 Share Site</button>
           <button id="reset" type="button">Restart</button>
@@ -155,5 +156,25 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <script src="script.js"></script>
+
+  <script>
+  window.fbAsyncInit = function () {
+    FB.init({
+      appId: "TON_APP_ID",
+      cookie: true,
+      xfbml: true,
+      version: "v19.0"
+    });
+  };
+
+  (function (d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "https://connect.facebook.net/en_US/sdk.js";
+    fjs.parentNode.insertBefore(js, fjs);
+  }(document, 'script', 'facebook-jssdk'));
+</script>
+
 </body>
 </html>

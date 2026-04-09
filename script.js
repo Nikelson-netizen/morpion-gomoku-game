@@ -1767,3 +1767,31 @@ async function generateShareImage(winnerName) {
   link.click();
 }
 
+const fbLoginBtn = document.getElementById("fbLoginBtn");
+
+if (fbLoginBtn) {
+  fbLoginBtn.addEventListener("click", () => {
+    FB.login(function (response) {
+      if (response.authResponse) {
+        console.log("Connected!");
+
+        FB.api('/me', { fields: 'name' }, function (user) {
+          console.log("User:", user.name);
+
+          // 🔥 Remplace ton playerName ici
+          localStorage.setItem("playerName", user.name);
+
+          // Optionnel: afficher dans ton UI
+          const status = document.getElementById("status");
+          if (status) {
+            status.textContent = "Welcome " + user.name;
+          }
+        });
+
+      } else {
+        console.log("Login cancelled");
+      }
+    }, { scope: 'public_profile,email' });
+  });
+}
+
