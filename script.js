@@ -1771,6 +1771,12 @@ const fbLoginBtn = document.getElementById("fbLoginBtn");
 
 if (fbLoginBtn) {
   fbLoginBtn.addEventListener("click", () => {
+
+    if (typeof FB === "undefined") {
+      alert("Facebook SDK not loaded");
+      return;
+    }
+
     FB.login(function (response) {
       if (response.authResponse) {
         console.log("Connected!");
@@ -1778,10 +1784,10 @@ if (fbLoginBtn) {
         FB.api('/me', { fields: 'name' }, function (user) {
           console.log("User:", user.name);
 
-          // 🔥 Remplace ton playerName ici
+          // 🔥 Sauvegarde du nom
           localStorage.setItem("playerName", user.name);
 
-          // Optionnel: afficher dans ton UI
+          // 🔥 Affichage dans ton UI
           const status = document.getElementById("status");
           if (status) {
             status.textContent = "Welcome " + user.name;
@@ -1791,7 +1797,8 @@ if (fbLoginBtn) {
       } else {
         console.log("Login cancelled");
       }
-    }, { scope: 'public_profile,email' });
+    }, { scope: 'public_profile' }); // ✅ IMPORTANT (pas email)
+
   });
 }
 
