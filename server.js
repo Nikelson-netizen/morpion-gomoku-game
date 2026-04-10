@@ -18,20 +18,20 @@ app.use((req, res, next) => {
   next();
 });
 
-const WWW_PATH = path.join(__dirname, "www");
+const PUBLIC_PATH = __dirname;
 
-app.use(express.static(WWW_PATH));
+app.use(express.static(PUBLIC_PATH));
 
 app.get("/service-worker.js", (req, res) => {
-  res.sendFile(path.join(WWW_PATH, "service-worker.js"));
+  res.sendFile(path.join(PUBLIC_PATH, "service-worker.js"));
 });
 
 app.get("/manifest.json", (req, res) => {
-  res.sendFile(path.join(WWW_PATH, "manifest.json"));
+  res.sendFile(path.join(PUBLIC_PATH, "manifest.json"));
 });
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(WWW_PATH, "index.html"));
+  res.sendFile(path.join(PUBLIC_PATH, "index.html"));
 });
 
 const server = http.createServer(app);
