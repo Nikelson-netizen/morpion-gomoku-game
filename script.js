@@ -1802,3 +1802,52 @@ if (fbLoginBtn) {
   });
 }
 
+let deferredPrompt = null;
+
+const installBtn = document.getElementById("installBtn");
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  if (installBtn) {
+    installBtn.style.display = "inline-flex";
+  }
+});
+
+if (installBtn) {
+  installBtn.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const choiceResult = await deferredPrompt.userChoice;
+
+    if (choiceResult.outcome === "accepted") {
+      console.log("PWA install accepted");
+    } else {
+      console.log("PWA install dismissed");
+    }
+
+    deferredPrompt = null;
+    installBtn.style.display = "none";
+  });
+}
+
+window.addEventListener("appinstalled", () => {
+  console.log("PWA was installed");
+  if (installBtn) {
+    installBtn.style.display = "none";
+  }
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      await navigator.serviceWorker.register("/service-worker.js");
+      console.log("Service worker registered");
+    } catch (error) {
+      console.error("Service worker registration failed:", error);
+    }
+  });
+}
+

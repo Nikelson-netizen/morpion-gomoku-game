@@ -750,3 +750,21 @@ body.watching-mode .container {
 .public-match-row {
   padding: 5px 0;
 }
+
+#installBtn {
+  display: none;
+  margin-top: 10px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 12px;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
+}
+
+#installBtn:hover {
+  transform: translateY(-1px);
+}

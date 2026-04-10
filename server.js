@@ -4,18 +4,35 @@ const { Server } = require("socket.io");
 const path = require("path");
 
 const app = express();
-app.disable("x-powered-by");
+
 app.use(express.json());
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()"
+  );
   next();
 });
 
-app.use(express.static(path.join(__dirname)));
+const WWW_PATH = path.join(__dirname, "www");
+
+app.use(express.static(WWW_PATH));
+
+app.get("/service-worker.js", (req, res) => {
+  res.sendFile(path.join(WWW_PATH, "service-worker.js"));
+});
+
+app.get("/manifest.json", (req, res) => {
+  res.sendFile(path.join(WWW_PATH, "manifest.json"));
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(WWW_PATH, "index.html"));
+});
 
 const server = http.createServer(app);
 
