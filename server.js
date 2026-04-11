@@ -39,7 +39,7 @@ app.get("/manifest.json", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(PUBLIC_PATH, "index.html"));
+  res.sendFile(path.join(PUBLIC_PATH, "/www/index.html"));
 });
 
 const io = new Server(server, {
