@@ -19,7 +19,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const PUBLIC_PATH = path.join(__dirname, "www");
+const PUBLIC_PATH = __dirname;
 
 const fs = require("fs");
 
@@ -39,7 +39,7 @@ app.get("/manifest.json", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(PUBLIC_PATH, "/www/index.html"));
+  res.sendFile(path.join(PUBLIC_PATH, "index.html"));
 });
 
 const io = new Server(server, {
