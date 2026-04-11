@@ -21,6 +21,13 @@ app.use((req, res, next) => {
 
 const PUBLIC_PATH = path.join(__dirname, "www");
 
+const fs = require("fs");
+
+console.log("www exists:", fs.existsSync(PUBLIC_PATH));
+console.log("index exists:", fs.existsSync(path.join(PUBLIC_PATH, "index.html")));
+console.log("script exists:", fs.existsSync(path.join(PUBLIC_PATH, "script.js")));
+console.log("worker exists:", fs.existsSync(path.join(PUBLIC_PATH, "aiWorker.js")));
+
 app.use(express.static(PUBLIC_PATH));
 
 app.get("/service-worker.js", (req, res) => {
