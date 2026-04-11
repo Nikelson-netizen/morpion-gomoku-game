@@ -414,7 +414,7 @@ function initWorker() {
   try {
     if (worker) worker.terminate();
 
-    worker = new Worker("./aiWorker.js");
+    worker = new Worker("/aiWorker.js");
 
     worker.onerror = (e) => {
       console.error("❌ Worker error message:", e.message);
