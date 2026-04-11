@@ -163,7 +163,7 @@ if (chatHeader && chatContent) {
   });
 }
 
-const placeSound = new Audio("sounds/click.mp3");
+const placeSound = new Audio("/sounds/click.mp3");
 placeSound.preload = "auto";
 
 function playPlaceSound() {
@@ -414,7 +414,7 @@ function initWorker() {
   try {
     if (worker) worker.terminate();
 
-    worker = new Worker("./aiWorker.js");
+    worker = new Worker("/aiWorker.js");
 
     worker.onerror = (e) => {
       console.error("❌ Worker error message:", e.message);
@@ -869,10 +869,10 @@ function handleMove(i) {
     line.forEach((idx) => cells[idx].classList.add("winner"));
 
     if (modeSelect.value === "online" && socket) {
-      socket.emit("onlineGameWon", { winnerColor: currentPlayer });
-    } else {
-      showWinner(getPlayerDisplayName(currentPlayer));
-    }
+  socket.emit("onlineGameWon", { winnerColor: currentPlayer });
+} else {
+  showWinner(getPlayerDisplayName(currentPlayer));
+}
 
     return;
   }

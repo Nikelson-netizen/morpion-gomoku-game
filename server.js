@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const path = require("path");
 
 const app = express();
+const server = http.createServer(app);
 
 app.use(express.json());
 
@@ -18,7 +19,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const PUBLIC_PATH = __dirname;
+const PUBLIC_PATH = path.join(__dirname, "WWW");
 
 app.use(express.static(PUBLIC_PATH));
 
@@ -33,8 +34,6 @@ app.get("/manifest.json", (req, res) => {
 app.get("/", (req, res) => {
   res.sendFile(path.join(PUBLIC_PATH, "index.html"));
 });
-
-const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
