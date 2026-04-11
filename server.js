@@ -19,7 +19,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const PUBLIC_PATH = path.join(__dirname, "www");
+const PUBLIC_PATH = path.join(__dirname, "WWW");
 
 app.use(express.static(PUBLIC_PATH));
 
