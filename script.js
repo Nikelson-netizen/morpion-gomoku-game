@@ -163,7 +163,7 @@ if (chatHeader && chatContent) {
   });
 }
 
-const placeSound = new Audio("sounds/click.mp3");
+const placeSound = new Audio("/sounds/click.mp3");
 placeSound.preload = "auto";
 
 function playPlaceSound() {
