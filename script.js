@@ -1803,16 +1803,17 @@ if (fbLoginBtn) {
 }
 
 let deferredPrompt = null;
-
 const installBtn = document.getElementById("installBtn");
 
 if (installBtn) {
   installBtn.style.display = "none";
 }
 
+// Capture install event
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
+
   console.log("Install prompt ready");
 
   if (installBtn) {
@@ -1820,33 +1821,29 @@ window.addEventListener("beforeinstallprompt", (e) => {
   }
 });
 
-if (installBtn) {
-  installBtn.addEventListener("click", async () => {
-    if (!deferredPrompt) {
-      console.log("No install prompt available yet");
-      return;
-    }
+// Click install
+installBtn?.addEventListener("click", async () => {
+  if (!deferredPrompt) {
+    console.log("No install prompt available yet");
+    return;
+  }
 
-    try {
-      await deferredPrompt.prompt();
-      const choiceResult = await deferredPrompt.userChoice;
+  try {
+    await deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
 
-      if (choiceResult.outcome === "accepted") {
-        console.log("PWA install accepted");
-      } else {
-        console.log("PWA install dismissed");
-      }
-    } catch (error) {
-      console.error("PWA install failed:", error);
-    }
+    console.log("User choice:", choice.outcome);
+  } catch (error) {
+    console.error("Install failed:", error);
+  }
 
-    deferredPrompt = null;
-    installBtn.style.display = "none";
-  });
-}
+  deferredPrompt = null;
+  installBtn.style.display = "none";
+});
 
+// After install
 window.addEventListener("appinstalled", () => {
-  console.log("PWA was installed");
+  console.log("PWA installed");
   deferredPrompt = null;
 
   if (installBtn) {
@@ -1854,13 +1851,13 @@ window.addEventListener("appinstalled", () => {
   }
 });
 
+// Service worker
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
-    try {
-      const registration = await navigator.serviceWorker.register("/service-worker.js");
-      console.log("Service worker registered", registration);
-    } catch (error) {
-      console.error("Service worker registration failed:", error);
-    }
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .then((reg) => console.log("SW registered", reg))
+      .catch((err) => console.error("SW failed", err));
   });
 }
+
