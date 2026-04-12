@@ -1,4 +1,4 @@
-const CACHE_NAME = "gomoku-v1";
+const CACHE_NAME = "gomoku-v2";
 
 const ASSETS_TO_CACHE = [
   "/",
@@ -7,7 +7,10 @@ const ASSETS_TO_CACHE = [
   "/script.js",
   "/logo.png",
   "/background.png",
-  "/manifest.json"
+  "/manifest.json",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/sounds/click.mp3"
 ];
 
 self.addEventListener("install", (event) => {
@@ -33,14 +36,9 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return (
-        cachedResponse ||
-        fetch(event.request).catch(() => caches.match("/index.html"))
-      );
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
     })
   );
 });
