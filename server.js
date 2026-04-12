@@ -19,7 +19,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const PUBLIC_PATH = __dirname;
+const PUBLIC_PATH = path.join(__dirname, "www");
 
 const fs = require("fs");
 
