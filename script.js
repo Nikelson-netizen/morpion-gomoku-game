@@ -1806,10 +1806,9 @@ let deferredPrompt = null;
 const installBtn = document.getElementById("installBtn");
 
 if (installBtn) {
-  installBtn.style.display = "inline-flex";
+  installBtn.style.display = "none";
 }
 
-// Capture install event
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
@@ -1821,30 +1820,42 @@ window.addEventListener("beforeinstallprompt", (e) => {
   }
 });
 
-// Click install
-installBtn?.addEventListener("click", async () => {
-  if (!deferredPrompt) {
-  alert("Install prompt not available yet on this browser/page.");
-  console.log("No install prompt available yet");
-  return;
+if (installBtn) {
+  installBtn.addEventListener("click", async () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+
+        if (choiceResult.outcome === "accepted") {
+          console.log("PWA install accepted");
+        } else {
+          console.log("PWA install dismissed");
+        }
+      } catch (error) {
+        console.error("PWA install failed:", error);
+      }
+
+      deferredPrompt = null;
+      installBtn.style.display = "none";
+      return;
+    }
+
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+
+    if (isIOS) {
+      alert("On iPhone: tap Share, then 'Add to Home Screen'.");
+    } else if (isAndroid) {
+      alert("Use your browser menu and tap 'Install app' or 'Add to Home screen'.");
+    } else {
+      alert("Use the install icon in the browser address bar to install this app.");
+    }
+  });
 }
 
-  try {
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-
-    console.log("User choice:", choice.outcome);
-  } catch (error) {
-    console.error("Install failed:", error);
-  }
-
-  deferredPrompt = null;
-  installBtn.style.display = "none";
-});
-
-// After install
 window.addEventListener("appinstalled", () => {
-  console.log("PWA installed");
+  console.log("PWA was installed");
   deferredPrompt = null;
 
   if (installBtn) {
@@ -1852,13 +1863,13 @@ window.addEventListener("appinstalled", () => {
   }
 });
 
-// Service worker
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/service-worker.js")
-      .then((reg) => console.log("SW registered", reg))
-      .catch((err) => console.error("SW failed", err));
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("/service-worker.js");
+      console.log("SW registered", registration);
+    } catch (error) {
+      console.error("SW registration failed:", error);
+    }
   });
 }
-
