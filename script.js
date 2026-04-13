@@ -1806,18 +1806,13 @@ let deferredPrompt = null;
 const installBtn = document.getElementById("installBtn");
 
 if (installBtn) {
-  installBtn.style.display = "none";
+  installBtn.style.display = "inline-flex";
 }
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
-
   console.log("Install prompt ready");
-
-  if (installBtn) {
-    installBtn.style.display = "inline-flex";
-  }
 });
 
 if (installBtn) {
@@ -1837,7 +1832,6 @@ if (installBtn) {
       }
 
       deferredPrompt = null;
-      installBtn.style.display = "none";
       return;
     }
 
@@ -1847,7 +1841,7 @@ if (installBtn) {
     if (isIOS) {
       alert("On iPhone: tap Share, then 'Add to Home Screen'.");
     } else if (isAndroid) {
-      alert("Use your browser menu and tap 'Install app' or 'Add to Home screen'.");
+      alert("Tap the browser menu and choose 'Install app' or 'Add to Home screen'.");
     } else {
       alert("Use the install icon in the browser address bar to install this app.");
     }
