@@ -1806,7 +1806,7 @@ let deferredPrompt = null;
 const installBtn = document.getElementById("installBtn");
 
 if (installBtn) {
-  installBtn.style.display = "none";
+  installBtn.style.display = "inline-flex";
 }
 
 // Capture install event
@@ -1824,9 +1824,10 @@ window.addEventListener("beforeinstallprompt", (e) => {
 // Click install
 installBtn?.addEventListener("click", async () => {
   if (!deferredPrompt) {
-    console.log("No install prompt available yet");
-    return;
-  }
+  alert("Install prompt not available yet on this browser/page.");
+  console.log("No install prompt available yet");
+  return;
+}
 
   try {
     await deferredPrompt.prompt();
