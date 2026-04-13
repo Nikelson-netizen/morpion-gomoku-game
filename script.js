@@ -1803,48 +1803,45 @@ if (fbLoginBtn) {
 }
 
 let deferredPrompt = null;
+
 const installBtn = document.getElementById("installBtn");
 
 if (installBtn) {
-  installBtn.style.display = "inline-flex";
+  installBtn.style.display = "none";
 }
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
   console.log("Install prompt ready");
+
+  if (installBtn) {
+  installBtn.style.display = "none";
+}
 });
 
 if (installBtn) {
   installBtn.addEventListener("click", async () => {
-    if (deferredPrompt) {
-      try {
-        deferredPrompt.prompt();
-        const choiceResult = await deferredPrompt.userChoice;
-
-        if (choiceResult.outcome === "accepted") {
-          console.log("PWA install accepted");
-        } else {
-          console.log("PWA install dismissed");
-        }
-      } catch (error) {
-        console.error("PWA install failed:", error);
-      }
-
-      deferredPrompt = null;
+    if (!deferredPrompt) {
+      console.log("No install prompt available yet");
       return;
     }
 
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const isAndroid = /Android/i.test(navigator.userAgent);
+    try {
+      await deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
 
-    if (isIOS) {
-      alert("On iPhone: tap Share, then 'Add to Home Screen'.");
-    } else if (isAndroid) {
-      alert("Tap the browser menu and choose 'Install app' or 'Add to Home screen'.");
-    } else {
-      alert("Use the install icon in the browser address bar to install this app.");
+      if (choiceResult.outcome === "accepted") {
+        console.log("PWA install accepted");
+      } else {
+        console.log("PWA install dismissed");
+      }
+    } catch (error) {
+      console.error("PWA install failed:", error);
     }
+
+    deferredPrompt = null;
+    installBtn.style.display = "none";
   });
 }
 
@@ -1861,9 +1858,9 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
       const registration = await navigator.serviceWorker.register("/service-worker.js");
-      console.log("SW registered", registration);
+      console.log("Service worker registered", registration);
     } catch (error) {
-      console.error("SW registration failed:", error);
+      console.error("Service worker registration failed:", error);
     }
   });
 }
