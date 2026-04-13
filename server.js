@@ -19,9 +19,15 @@ app.use((req, res, next) => {
   next();
 });
 
-const PUBLIC_PATH = path.join(__dirname, "www");
-
 const fs = require("fs");
+
+const possibleWwwPath = path.join(__dirname, "www");
+
+const PUBLIC_PATH = fs.existsSync(possibleWwwPath)
+  ? possibleWwwPath
+  : __dirname;
+
+console.log("Using PUBLIC_PATH =", PUBLIC_PATH);
 
 console.log("www exists:", fs.existsSync(PUBLIC_PATH));
 console.log("index exists:", fs.existsSync(path.join(PUBLIC_PATH, "index.html")));
