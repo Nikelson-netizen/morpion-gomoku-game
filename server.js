@@ -383,6 +383,7 @@ function emitMatchState(match) {
     gameOver: match.gameOver,
     winnerName: match.winnerName,
     spectatorCount: getSpectatorCount(match),
+    matchScore: match.matchScore || { black: 0, white: 0 },
   });
 
   broadcastMatches();
@@ -472,19 +473,21 @@ function cleanupDisconnectedPlayer(socketId) {
       if (other) {
         other.status = "available";
         io.to(otherId).emit("matchEnded", {
-          message: "Opponent disconnected. Match ended.",
-          winnerName: match.winnerName,
-          blackName: match.blackName,
-          whiteName: match.whiteName,
-        });
+  message: "Opponent disconnected. Match ended.",
+  winnerName: match.winnerName,
+  blackName: match.blackName,
+  whiteName: match.whiteName,
+  matchScore: match.matchScore || { black: 0, white: 0 },
+});
       }
 
       io.to(match.id).emit("matchEnded", {
-        message: "A player disconnected. Match ended.",
-        winnerName: match.winnerName,
-        blackName: match.blackName,
-        whiteName: match.whiteName,
-      });
+  message: "A player disconnected. Match ended.",
+  winnerName: match.winnerName,
+  blackName: match.blackName,
+  whiteName: match.whiteName,
+  matchScore: match.matchScore || { black: 0, white: 0 },
+});
 
       leaveMatchRoom(match.blackId, match.id);
       leaveMatchRoom(match.whiteId, match.id);
@@ -785,18 +788,22 @@ io.on("connection", (socket) => {
     logStats();
 
     const match = {
-      id: `${fromId}-${socket.id}-${Date.now()}`,
-      blackId: fromId,
-      whiteId: socket.id,
-      blackName: other.name,
-      whiteName: me.name,
-      board: Array(BOARD_CELLS).fill(null),
-      currentPlayer: "black",
-      nextStarterId: socket.id,
-      gameOver: false,
-      winnerName: null,
-      spectators: new Set(),
-    };
+  id: /${fromId}-${socket.id}-${Date.now()}/,
+  blackId: fromId,
+  whiteId: socket.id,
+  blackName: other.name,
+  whiteName: me.name,
+  board: Array(BOARD_CELLS).fill(null),
+  currentPlayer: "black",
+  nextStarterId: socket.id,
+  gameOver: false,
+  winnerName: null,
+  spectators: new Set(),
+  matchScore: {
+    black: 0,
+    white: 0,
+  },
+};
 
     publicMatches.push(match);
     pendingInvites.delete(socket.id);
@@ -807,30 +814,32 @@ io.on("connection", (socket) => {
     setSocketMatchId(match.whiteId, match.id);
 
     io.to(fromId).emit("gameStart", {
-      matchId: match.id,
-      color: "black",
-      opponentName: me.name,
-      blackName: match.blackName,
-      whiteName: match.whiteName,
-      currentPlayer: match.currentPlayer,
-      board: match.board,
-      gameOver: match.gameOver,
-      winnerName: match.winnerName,
-      spectatorCount: getSpectatorCount(match),
-    });
+  matchId: match.id,
+  color: "black",
+  opponentName: me.name,
+  blackName: match.blackName,
+  whiteName: match.whiteName,
+  currentPlayer: match.currentPlayer,
+  board: match.board,
+  gameOver: match.gameOver,
+  winnerName: match.winnerName,
+  spectatorCount: getSpectatorCount(match),
+  matchScore: match.matchScore,
+});
 
     socket.emit("gameStart", {
-      matchId: match.id,
-      color: "white",
-      opponentName: other.name,
-      blackName: match.blackName,
-      whiteName: match.whiteName,
-      currentPlayer: match.currentPlayer,
-      board: match.board,
-      gameOver: match.gameOver,
-      winnerName: match.winnerName,
-      spectatorCount: getSpectatorCount(match),
-    });
+  matchId: match.id,
+  color: "white",
+  opponentName: other.name,
+  blackName: match.blackName,
+  whiteName: match.whiteName,
+  currentPlayer: match.currentPlayer,
+  board: match.board,
+  gameOver: match.gameOver,
+  winnerName: match.winnerName,
+  spectatorCount: getSpectatorCount(match),
+  matchScore: match.matchScore,
+});
 
     emitMatchState(match);
     broadcastPlayers();
@@ -889,15 +898,16 @@ io.on("connection", (socket) => {
     match.spectators.add(socket.id);
 
     socket.emit("watchStart", {
-      matchId: match.id,
-      board: match.board,
-      blackName: match.blackName,
-      whiteName: match.whiteName,
-      currentPlayer: match.currentPlayer,
-      gameOver: match.gameOver,
-      winnerName: match.winnerName,
-      spectatorCount: getSpectatorCount(match),
-    });
+  matchId: match.id,
+  board: match.board,
+  blackName: match.blackName,
+  whiteName: match.whiteName,
+  currentPlayer: match.currentPlayer,
+  gameOver: match.gameOver,
+  winnerName: match.winnerName,
+  spectatorCount: getSpectatorCount(match),
+  matchScore: match.matchScore || { black: 0, white: 0 },
+});
 
     emitMatchState(match);
   });
@@ -959,21 +969,34 @@ io.on("connection", (socket) => {
     io.to(match.id).emit("movePlayed", { index, player });
 
     if (isWinningMove(match.board, index, player)) {
-      match.gameOver = true;
-      match.winnerName = player === "black" ? match.blackName : match.whiteName;
+  match.gameOver = true;
+  match.winnerName = player === "black" ? match.blackName : match.whiteName;
 
-      stats.totalGamesFinished++;
-      console.log("🏁 Match finished");
-      logStats();
+  if (!match.matchScore) {
+    match.matchScore = { black: 0, white: 0 };
+  }
 
-      io.to(match.id).emit("gameWon", {
-        winnerColor: player,
-        winnerName: match.winnerName,
-      });
+  if (player === "black") {
+    match.matchScore.black += 1;
+  } else {
+    match.matchScore.white += 1;
+  }
 
-      emitMatchState(match);
-      return;
-    }
+  stats.totalGamesFinished++;
+  console.log("🏁 Match finished");
+  logStats();
+
+  io.to(match.id).emit("gameWon", {
+    winnerColor: player,
+    winnerName: match.winnerName,
+    blackName: match.blackName,
+    whiteName: match.whiteName,
+    matchScore: match.matchScore,
+  });
+
+  emitMatchState(match);
+  return;
+}
 
     match.currentPlayer = player === "black" ? "white" : "black";
     emitMatchState(match);
@@ -1009,14 +1032,15 @@ io.on("connection", (socket) => {
     }
 
     io.to(match.id).emit("onlineGameReset", {
-      board: match.board,
-      currentPlayer: match.currentPlayer,
-      blackName: match.blackName,
-      whiteName: match.whiteName,
-      gameOver: match.gameOver,
-      winnerName: match.winnerName,
-      spectatorCount: getSpectatorCount(match),
-    });
+  board: match.board,
+  currentPlayer: match.currentPlayer,
+  blackName: match.blackName,
+  whiteName: match.whiteName,
+  gameOver: match.gameOver,
+  winnerName: match.winnerName,
+  spectatorCount: getSpectatorCount(match),
+  matchScore: match.matchScore || { black: 0, white: 0 },
+});
 
     emitMatchState(match);
   });
@@ -1043,11 +1067,12 @@ io.on("connection", (socket) => {
     if (white) white.status = "available";
 
     io.to(match.id).emit("matchEnded", {
-      message: "Match ended.",
-      winnerName: match.winnerName,
-      blackName: match.blackName,
-      whiteName: match.whiteName,
-    });
+  message: "Match ended.",
+  winnerName: match.winnerName,
+  blackName: match.blackName,
+  whiteName: match.whiteName,
+  matchScore: match.matchScore || { black: 0, white: 0 },
+});
 
     leaveMatchRoom(match.blackId, match.id);
     leaveMatchRoom(match.whiteId, match.id);

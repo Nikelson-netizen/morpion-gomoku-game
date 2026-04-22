@@ -38,10 +38,7 @@ if (playerNameInput) {
       }
     }
 
-    if (scoreText) {
-      scoreText.textContent =
-        `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
-    }
+    renderMatchScore();
   });
 }
 
@@ -233,15 +230,21 @@ function getPlayerDisplayName(color) {
   return color;
 }
 
+function renderMatchScore() {
+  if (!scoreText) return;
+
+  scoreText.innerHTML = `
+    <div>MATCH SCORE</div>
+    <div>${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}</div>
+  `;
+}
+
 function resetMatchScore() {
   matchScore.black = 0;
   matchScore.white = 0;
   winnerAlreadyCounted = false;
 
-  if (scoreText) {
-    scoreText.textContent =
-      `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
-  }
+  renderMatchScore();
 }
 
 function clearWinnerClasses() {
@@ -319,7 +322,9 @@ function showWinner(winnerName) {
 
   highlightWinningLineFromBoard();
 
-  if (!winnerAlreadyCounted) {
+  const isOnlineOrWatching = modeSelect.value === "online" || isWatching;
+
+  if (!winnerAlreadyCounted && !isOnlineOrWatching) {
     if (winnerName === currentBlackName) {
       matchScore.black++;
     }
@@ -327,14 +332,10 @@ function showWinner(winnerName) {
     if (winnerName === currentWhiteName) {
       matchScore.white++;
     }
-
-    winnerAlreadyCounted = true;
   }
 
-  if (scoreText) {
-    scoreText.textContent =
-      `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
-  }
+  winnerAlreadyCounted = true;
+  renderMatchScore();
 
   status.textContent =
     `🎉 ${winnerName} wins the game! Score: ${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
@@ -359,9 +360,9 @@ function showWinner(winnerName) {
     challengeBtn.style.display = "inline-block";
 
     const humanWonVsAI =
-  challengeSessionActive &&
-  modeSelect.value === "ai" &&
-  winnerName === getPlayerDisplayName(HUMAN_PLAYER);
+      challengeSessionActive &&
+      modeSelect.value === "ai" &&
+      winnerName === getPlayerDisplayName(HUMAN_PLAYER);
 
     if (humanWonVsAI) {
       challengeBtn.onclick = () => {
@@ -1193,20 +1194,24 @@ function initSocket() {
   });
 
   socket.on("watchStart", ({
-    matchId,
-    board: matchBoard,
-    blackName,
-    whiteName,
-    currentPlayer: watchedCurrentPlayer,
-    gameOver: watchedGameOver,
-    winnerName
-  }) => {
+  matchId,
+  board: matchBoard,
+  blackName,
+  whiteName,
+  currentPlayer: watchedCurrentPlayer,
+  gameOver: watchedGameOver,
+  winnerName,
+  matchScore: serverMatchScore
+}) => {
     isWatching = true;
     watchingMatchId = matchId;
     myColor = null;
 
     currentBlackName = blackName || "Black";
     currentWhiteName = whiteName || "White";
+    matchScore = serverMatchScore || { black: 0, white: 0 };
+    winnerAlreadyCounted = true;
+    renderMatchScore();
     currentPlayer = watchedCurrentPlayer;
     gameOver = !!watchedGameOver;
 
@@ -1227,14 +1232,15 @@ function initSocket() {
   });
 
   socket.on("gameStart", ({
-    color,
-    opponentName,
-    blackName,
-    whiteName,
-    board: matchBoard,
-    currentPlayer: serverCurrentPlayer,
-    winnerName
-  }) => {
+  color,
+  opponentName,
+  blackName,
+  whiteName,
+  board: matchBoard,
+  currentPlayer: serverCurrentPlayer,
+  winnerName,
+  matchScore: serverMatchScore
+}) => {
     document.body.classList.remove("watching-mode");
     board.classList.remove("spectator-board");
     isWatching = false;
@@ -1245,9 +1251,13 @@ function initSocket() {
     pendingInviteTargetName = "";
 
     myColor = color;
-    resetMatchScore();
+    matchScore = serverMatchScore || { black: 0, white: 0 };
+    winnerAlreadyCounted = false;
+
     currentBlackName = blackName || (color === "black" ? myPlayerName : opponentName || "Black");
     currentWhiteName = whiteName || (color === "white" ? myPlayerName : opponentName || "White");
+
+    renderMatchScore();
 
     currentPlayer = serverCurrentPlayer || "black";
     gameOver = false;
@@ -1322,16 +1332,19 @@ function initSocket() {
   });
 
   socket.on("matchState", ({
-    matchId,
-    board: serverBoard,
-    blackName,
-    whiteName,
-    currentPlayer: serverCurrentPlayer,
-    gameOver: serverGameOver,
-    winnerName
-  }) => {
+  matchId,
+  board: serverBoard,
+  blackName,
+  whiteName,
+  currentPlayer: serverCurrentPlayer,
+  gameOver: serverGameOver,
+  winnerName,
+  matchScore: serverMatchScore
+}) => {
     currentBlackName = blackName || "Black";
     currentWhiteName = whiteName || "White";
+    matchScore = serverMatchScore || matchScore;
+    renderMatchScore();
     currentPlayer = serverCurrentPlayer || "black";
     gameOver = !!serverGameOver;
 
@@ -1357,20 +1370,27 @@ function initSocket() {
     updateTurnStatus();
   });
 
-  socket.on("gameWon", ({ winnerName }) => {
-    gameOver = true;
-    lockBoard();
-    showWinner(winnerName);
-  });
+  socket.on("gameWon", ({ winnerName, blackName, whiteName, matchScore: serverMatchScore }) => {
+  currentBlackName = blackName || currentBlackName;
+  currentWhiteName = whiteName || currentWhiteName;
+  matchScore = serverMatchScore || matchScore;
+  winnerAlreadyCounted = true;
+
+  gameOver = true;
+  lockBoard();
+  renderMatchScore();
+  showWinner(winnerName);
+});
 
   socket.on("onlineGameReset", ({
-    board: serverBoard,
-    currentPlayer: serverCurrentPlayer,
-    blackName,
-    whiteName,
-    gameOver: serverGameOver,
-    winnerName
-  }) => {
+  board: serverBoard,
+  currentPlayer: serverCurrentPlayer,
+  blackName,
+  whiteName,
+  gameOver: serverGameOver,
+  winnerName,
+  matchScore: serverMatchScore
+}) => {
     unlockBoard();
 
     resetButton.textContent = "Restart";
@@ -1378,6 +1398,9 @@ function initSocket() {
 
     currentBlackName = blackName || currentBlackName;
     currentWhiteName = whiteName || currentWhiteName;
+    matchScore = serverMatchScore || matchScore;
+    winnerAlreadyCounted = false;
+    renderMatchScore();
 
     applyBoardFromServer(serverBoard || Array(N).fill(null));
 
@@ -1419,7 +1442,7 @@ function initSocket() {
     resetGame();
   });
 
-  socket.on("matchEnded", ({ message }) => {
+  socket.on("matchEnded", ({ message, blackName, whiteName, matchScore: serverMatchScore }) => {
     document.body.classList.remove("watching-mode");
     board.classList.remove("spectator-board");
     isWatching = false;
@@ -1434,9 +1457,11 @@ function initSocket() {
     myColor = null;
     gameOver = true;
     currentPlayer = "black";
-    currentBlackName = "Black";
-    currentWhiteName = "White";
-    resetMatchScore();
+    currentBlackName = blackName || "Black";
+    currentWhiteName = whiteName || "White";
+    matchScore = serverMatchScore || { black: 0, white: 0 };
+    winnerAlreadyCounted = false;
+    renderMatchScore();
 
     grid.fill(null);
     lastMoveIndex = null;
@@ -1506,10 +1531,7 @@ function resetGame() {
     shareContainer.style.display = "none";
   }
 
-  if (scoreText) {
-    scoreText.textContent =
-      `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
-  }
+  renderMatchScore();
 
   if (modeSelect.value === "online") {
     if (socket && myColor) {
