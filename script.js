@@ -233,10 +233,8 @@ function getPlayerDisplayName(color) {
 function renderMatchScore() {
   if (!scoreText) return;
 
-  scoreText.innerHTML = `
-    <div>MATCH SCORE</div>
-    <div>${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}</div>
-  `;
+  scoreText.textContent =
+    `${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
 }
 
 function resetMatchScore() {
@@ -1203,33 +1201,33 @@ function initSocket() {
   winnerName,
   matchScore: serverMatchScore
 }) => {
-    isWatching = true;
-    watchingMatchId = matchId;
-    myColor = null;
+  isWatching = true;
+  watchingMatchId = matchId;
+  myColor = null;
 
-    currentBlackName = blackName || "Black";
-    currentWhiteName = whiteName || "White";
-    matchScore = serverMatchScore || { black: 0, white: 0 };
-    winnerAlreadyCounted = true;
-    renderMatchScore();
-    currentPlayer = watchedCurrentPlayer;
-    gameOver = !!watchedGameOver;
+  currentBlackName = blackName || "Black";
+  currentWhiteName = whiteName || "White";
+  matchScore = serverMatchScore || { black: 0, white: 0 };
+  currentPlayer = watchedCurrentPlayer || "black";
+  gameOver = !!watchedGameOver;
+  winnerAlreadyCounted = true;
 
-    applyBoardFromServer(matchBoard || Array(N).fill(null));
+  renderMatchScore();
+  applyBoardFromServer(matchBoard || Array(N).fill(null));
 
-    document.body.classList.add("watching-mode");
-    board.classList.add("spectator-board");
-    document.body.classList.toggle("white-turn", currentPlayer === "white");
+  document.body.classList.add("watching-mode");
+  board.classList.add("spectator-board");
+  document.body.classList.toggle("white-turn", currentPlayer === "white");
 
-    if (gameOver) {
-      lockBoard();
-      if (winnerName) showWinner(winnerName);
-      return;
-    }
+  if (gameOver) {
+    lockBoard();
+    if (winnerName) showWinner(winnerName);
+    return;
+  }
 
-    unlockBoard();
-    status.textContent = `👀 Watching ${currentBlackName} vs ${currentWhiteName}`;
-  });
+  unlockBoard();
+  status.textContent = `👀 Watching ${currentBlackName} vs ${currentWhiteName}`;
+});
 
   socket.on("gameStart", ({
   color,
@@ -1430,17 +1428,20 @@ function initSocket() {
   });
 
   socket.on("watchEnded", () => {
-    isWatching = false;
-    watchingMatchId = null;
-    document.body.classList.remove("watching-mode");
-    board.classList.remove("spectator-board");
-    unlockBoard();
+  isWatching = false;
+  watchingMatchId = null;
 
-    if (leaveMatchButton) leaveMatchButton.textContent = "End Match";
+  document.body.classList.remove("watching-mode");
+  board.classList.remove("spectator-board");
+  unlockBoard();
 
-    resetMatchScore();
-    resetGame();
-  });
+  if (leaveMatchButton) {
+    leaveMatchButton.textContent = "End Match";
+  }
+
+  renderPublicMatches(publicMatches);
+  updateTurnStatus();
+});
 
   socket.on("matchEnded", ({ message, blackName, whiteName, matchScore: serverMatchScore }) => {
     document.body.classList.remove("watching-mode");
@@ -1580,13 +1581,17 @@ if (leaveMatchButton) {
 
     if (isWatching) {
       socket.emit("leaveWatch");
+
+      isWatching = false;
+      watchingMatchId = null;
+
       document.body.classList.remove("watching-mode");
       board.classList.remove("spectator-board");
       unlockBoard();
+
       leaveMatchButton.textContent = "End Match";
-      isWatching = false;
-      watchingMatchId = null;
-      resetGame();
+      renderPublicMatches(publicMatches);
+      updateTurnStatus();
       return;
     }
 
