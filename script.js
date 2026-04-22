@@ -1204,29 +1204,41 @@ function initSocket() {
   isWatching = true;
   watchingMatchId = matchId;
   myColor = null;
+  gameOver = !!watchedGameOver;
+  winnerAlreadyCounted = true;
+  lastMoveIndex = null;
+  winningLine = [];
 
   currentBlackName = blackName || "Black";
   currentWhiteName = whiteName || "White";
   matchScore = serverMatchScore || { black: 0, white: 0 };
   currentPlayer = watchedCurrentPlayer || "black";
-  gameOver = !!watchedGameOver;
-  winnerAlreadyCounted = true;
+
+  if (Array.isArray(matchBoard) && matchBoard.length === N) {
+    applyBoardFromServer(matchBoard);
+  } else {
+    applyBoardFromServer(Array(N).fill(null));
+  }
 
   renderMatchScore();
-  applyBoardFromServer(matchBoard || Array(N).fill(null));
 
   document.body.classList.add("watching-mode");
   board.classList.add("spectator-board");
   document.body.classList.toggle("white-turn", currentPlayer === "white");
 
+  if (leaveMatchButton) {
+    leaveMatchButton.textContent = "Leave Watch";
+  }
+
   if (gameOver) {
     lockBoard();
     if (winnerName) showWinner(winnerName);
-    return;
+  } else {
+    unlockBoard();
+    status.textContent = `👀 Watching ${currentBlackName} vs ${currentWhiteName}`;
   }
 
-  unlockBoard();
-  status.textContent = `👀 Watching ${currentBlackName} vs ${currentWhiteName}`;
+  renderPublicMatches(publicMatches);
 });
 
   socket.on("gameStart", ({
