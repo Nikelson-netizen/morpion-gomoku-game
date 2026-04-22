@@ -788,7 +788,7 @@ io.on("connection", (socket) => {
     logStats();
 
     const match = {
-  id: /${fromId}-${socket.id}-${Date.now()}/,
+  id: `${fromId}-${socket.id}-${Date.now()}`,
   blackId: fromId,
   whiteId: socket.id,
   blackName: other.name,
@@ -888,8 +888,8 @@ io.on("connection", (socket) => {
 
     removeSpectatorFromAllMatches(socket.id);
 
-    socket.join(matchId);
-    socket.matchId = matchId;
+    joinMatchRoom(socket.id, match.id);
+    setSocketMatchId(socket.id, match.id);
 
     if (!match.spectators) {
       match.spectators = new Set();
