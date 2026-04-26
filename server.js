@@ -321,17 +321,18 @@ function buildSafeMatchesForSocket(socketId) {
       m.blackId === socketId || m.whiteId === socketId;
 
     return {
-      id: m.id,
-      blackId: m.blackId,
-      whiteId: m.whiteId,
-      blackName: m.blackName,
-      whiteName: m.whiteName,
-      currentPlayer: m.currentPlayer,
-      gameOver: m.gameOver,
-      winnerName: m.winnerName,
-      spectatorCount: getSpectatorCount(m),
-      canWatch: !isPlayerInThisMatch,
-    };
+  id: m.id,
+  blackId: m.blackId,
+  whiteId: m.whiteId,
+  blackName: m.blackName,
+  whiteName: m.whiteName,
+  currentPlayer: m.currentPlayer,
+  gameOver: m.gameOver,
+  winnerName: m.winnerName,
+  spectatorCount: getSpectatorCount(m),
+  matchScore: m.matchScore || { black: 0, white: 0 },
+  canWatch: !isPlayerInThisMatch,
+};
   });
 }
 

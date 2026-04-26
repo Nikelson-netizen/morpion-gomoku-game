@@ -1211,7 +1211,10 @@ function initSocket() {
 
   currentBlackName = blackName || "Black";
   currentWhiteName = whiteName || "White";
-  matchScore = serverMatchScore || { black: 0, white: 0 };
+  matchScore = {
+  black: Number(serverMatchScore?.black || 0),
+  white: Number(serverMatchScore?.white || 0)
+};
   currentPlayer = watchedCurrentPlayer || "black";
 
   if (Array.isArray(matchBoard) && matchBoard.length === N) {
@@ -1261,7 +1264,10 @@ function initSocket() {
     pendingInviteTargetName = "";
 
     myColor = color;
-    matchScore = serverMatchScore || { black: 0, white: 0 };
+    matchScore = {
+  black: Number(serverMatchScore?.black || 0),
+  white: Number(serverMatchScore?.white || 0)
+};
     winnerAlreadyCounted = false;
 
     currentBlackName = blackName || (color === "black" ? myPlayerName : opponentName || "Black");
@@ -1353,7 +1359,10 @@ function initSocket() {
 }) => {
     currentBlackName = blackName || "Black";
     currentWhiteName = whiteName || "White";
-    matchScore = serverMatchScore || matchScore;
+    matchScore = {
+  black: Number(serverMatchScore?.black || 0),
+  white: Number(serverMatchScore?.white || 0)
+};
     renderMatchScore();
     currentPlayer = serverCurrentPlayer || "black";
     gameOver = !!serverGameOver;
@@ -1383,7 +1392,10 @@ function initSocket() {
   socket.on("gameWon", ({ winnerName, blackName, whiteName, matchScore: serverMatchScore }) => {
   currentBlackName = blackName || currentBlackName;
   currentWhiteName = whiteName || currentWhiteName;
-  matchScore = serverMatchScore || matchScore;
+  matchScore = {
+  black: Number(serverMatchScore?.black || 0),
+  white: Number(serverMatchScore?.white || 0)
+};
   winnerAlreadyCounted = true;
 
   gameOver = true;
@@ -1408,7 +1420,10 @@ function initSocket() {
 
     currentBlackName = blackName || currentBlackName;
     currentWhiteName = whiteName || currentWhiteName;
-    matchScore = serverMatchScore || matchScore;
+    matchScore = {
+  black: Number(serverMatchScore?.black || 0),
+  white: Number(serverMatchScore?.white || 0)
+};
     winnerAlreadyCounted = false;
     renderMatchScore();
 
@@ -1512,7 +1527,9 @@ function resetGame() {
   watchingMatchId = null;
   resetButton.style.display = "inline-block";
 
+  if (modeSelect.value !== "online") {
   refreshPlayerNames();
+}
 
   if (modeSelect.value !== "online") {
   if (onlineInfo) {
