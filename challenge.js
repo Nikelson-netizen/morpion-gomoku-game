@@ -880,3 +880,18 @@ function patchChallengeGameSync() {
     return originalShowWinner.apply(this, arguments);
   };
 }
+
+function bindCollapseCards() {
+  document.querySelectorAll(".collapse-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const card = btn.closest(".collapsible-card");
+
+      if (card) {
+        card.classList.toggle("open");
+      }
+    });
+  });
+}
+document.addEventListener("DOMContentLoaded", () => {
+  bindCollapseCards();
+});
