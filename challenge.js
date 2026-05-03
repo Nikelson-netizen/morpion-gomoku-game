@@ -475,7 +475,7 @@ function renderLeaderboard() {
     .sort((a, b) => b.points - a.points);
 
   if (!sorted.length) {
-    leaderboardList.innerHTML = <div class="empty-text">No players yet in Level ${selectedLevel}</div>;
+    leaderboardList.innerHTML = `<div class="empty-text">No players yet in Level ${selectedLevel}</div>`;
     return;
   }
 
