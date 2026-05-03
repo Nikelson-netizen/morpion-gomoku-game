@@ -508,7 +508,7 @@ function renderHistory() {
   historyList.innerHTML = "";
 
   if (!challengeData.history.length) {
-    historyList.innerHTML = <div class="empty-text">No challenge history yet</div>;
+    historyList.innerHTML = `<div class="empty-text">No challenge history yet</div>`;
     return;
   }
 
