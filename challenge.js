@@ -34,7 +34,6 @@ const isChallengePage = !!document.querySelector(".challenge-page");
 // ✅ Level 1 supprimé
 const VALID_LEVELS = ["2", "3", "4", "5"];
 
-// ✅ ID unique par navigateur/appareil
 function getChallengePlayerId() {
   let id = localStorage.getItem("challengePlayerId");
 
@@ -57,14 +56,12 @@ function getChallengeSocket() {
 
 const defaultChallengeData = {
   browserPlayerId: getChallengePlayerId(),
-  playerName:
-    localStorage.getItem("challengePlayerName") ||
-    localStorage.getItem("playerName") ||
-    "Player",
+  playerName: localStorage.getItem("challengePlayerName") || localStorage.getItem("playerName") || "Player",
   online: false,
 
   selectedLeaderboardLevel: "2",
 
+  // ✅ stats séparées par niveau
   levelStats: {
     "2": { points: 0, wins: 0, losses: 0, streak: 0, bestStreak: 0 },
     "3": { points: 0, wins: 0, losses: 0, streak: 0, bestStreak: 0 },
@@ -151,12 +148,9 @@ function ensureLevelStatsShape(data) {
   return next;
 }
 
+// ✅ migration douce des anciennes données
 function migrateLegacyData(data) {
   const next = { ...data };
-
-  if (!next.browserPlayerId || next.browserPlayerId === "local-browser-player") {
-    next.browserPlayerId = getChallengePlayerId();
-  }
 
   if (!next.levelStats || typeof next.levelStats !== "object") {
     next.levelStats = deepClone(defaultChallengeData.levelStats);
@@ -206,8 +200,6 @@ function normalizeChallengeData(data) {
   next = migrateLegacyData(next);
   next = ensureLeaderboardsShape(next);
   next = ensureLevelStatsShape(next);
-
-  next.browserPlayerId = getChallengePlayerId();
 
   next.playerName =
     typeof next.playerName === "string" && next.playerName.trim()
@@ -354,6 +346,7 @@ function getAiBonus(aiLevel) {
   return 0;
 }
 
+// ✅ on ne reset PAS le joueur au refresh
 function hydratePlayerNameIntoInput() {
   if (!pagePlayerNameInput) return;
   const storedName = getStoredChallengePlayerName();
@@ -361,31 +354,37 @@ function hydratePlayerNameIntoInput() {
 }
 
 function updateLocalLeaderboardName(oldName, newName) {
+  const oldClean = String(oldName || "").trim();
   const newClean = String(newName || "").trim();
-  if (!newClean || newClean === "Player") return;
 
-  const playerId = getChallengePlayerId();
+  if (!newClean) return;
 
   VALID_LEVELS.forEach((level) => {
     const board = Array.isArray(challengeData.leaderboards[level])
       ? [...challengeData.leaderboards[level]]
       : [];
 
-    const currentStats = getStatsForLevel(level);
-    const existingIndex = board.findIndex((player) => player.playerId === playerId);
+    let renamed = false;
 
-    if (existingIndex >= 0) {
-      board[existingIndex] = {
-        ...board[existingIndex],
-        playerId,
-        name: newClean,
-        points: currentStats.points || 0,
-        online: level === getCurrentChallengeLevel() ? true : !!challengeData.online,
-        level
-      };
-    } else {
-      board.push({
-        playerId,
+    const updated = board.map((player) => {
+      if (
+        oldClean &&
+        player &&
+        player.name &&
+        player.name.toLowerCase() === oldClean.toLowerCase()
+      ) {
+        renamed = true;
+        return {
+          ...player,
+          name: newClean
+        };
+      }
+      return player;
+    });
+
+    if (!renamed) {
+      const currentStats = getStatsForLevel(level);
+      updated.push({
         name: newClean,
         points: currentStats.points || 0,
         online: level === getCurrentChallengeLevel() ? true : !!challengeData.online,
@@ -393,7 +392,7 @@ function updateLocalLeaderboardName(oldName, newName) {
       });
     }
 
-    challengeData.leaderboards[level] = board;
+  challengeData.leaderboards[level] = updated;
   });
 }
 
@@ -450,7 +449,7 @@ function ensureLeaderboardTabs() {
       btn.classList.add("active");
     }
 
-    btn.textContent = `Level ${level}`;
+    btn.textContent = Level `${level}`;
     btn.addEventListener("click", () => {
       setSelectedLeaderboardLevel(level);
       ensureLeaderboardTabs();
@@ -473,10 +472,10 @@ function renderLeaderboard() {
 
   const sorted = [...levelBoard]
     .filter((player) => player && player.name && player.name.trim() && player.name !== "Player")
-    .sort((a, b) => (b.points || 0) - (a.points || 0));
+    .sort((a, b) => b.points - a.points);
 
   if (!sorted.length) {
-    leaderboardList.innerHTML = `<div class="empty-text">No players yet in Level ${selectedLevel}</div>`;
+    leaderboardList.innerHTML = <div class="empty-text">No players yet in Level ${selectedLevel}</div>;
     return;
   }
 
@@ -495,7 +494,7 @@ function renderLeaderboard() {
           </div>
         </div>
       </div>
-      <div class="lb-points">${player.points || 0} pts</div>
+      <div class="lb-points">${player.points} pts</div>
     `;
 
     leaderboardList.appendChild(item);
@@ -508,7 +507,7 @@ function renderHistory() {
   historyList.innerHTML = "";
 
   if (!challengeData.history.length) {
-    historyList.innerHTML = `<div class="empty-text">No challenge history yet</div>`;
+    historyList.innerHTML = <div class="empty-text">No challenge history yet</div>;
     return;
   }
 
@@ -545,9 +544,8 @@ function registerChallengeSocketListeners() {
     if (!Array.isArray(leaderboard)) return;
 
     challengeData.leaderboards[cleanLevel] = leaderboard.map((player) => ({
-      playerId: player.playerId || "",
       name: player.name,
-      points: Number(player.points) || 0,
+      points: player.points,
       online: !!player.online,
       level: cleanLevel
     }));
@@ -565,13 +563,13 @@ async function fetchChallengeLeaderboardFromServer(level = getSelectedLeaderboar
 
     if (!data.success || !Array.isArray(data.leaderboard)) return;
 
-    challengeData.leaderboards[cleanLevel] = data.leaderboard.map((player) => ({
-      playerId: player.playerId || "",
-      name: player.name,
-      points: Number(player.points) || 0,
-      online: !!player.online,
-      level: cleanLevel
-    }));
+  challengeData.leaderboards[cleanLevel] = data.leaderboard.map((player) => ({
+  playerId: player.playerId,
+  name: player.name,
+  points: player.points,
+  online: !!player.online,
+  level: cleanLevel
+}));
 
     saveChallengeData();
     renderLeaderboard();
@@ -589,14 +587,14 @@ async function fetchAllLeaderboardsFromServer() {
 
     VALID_LEVELS.forEach((level) => {
       challengeData.leaderboards[level] = Array.isArray(data.leaderboards[level])
-        ? data.leaderboards[level].map((player) => ({
-            playerId: player.playerId || "",
-            name: player.name,
-            points: Number(player.points) || 0,
-            online: !!player.online,
-            level
-          }))
-        : [];
+  ? data.leaderboards[level].map((player) => ({
+      playerId: player.playerId,
+      name: player.name,
+      points: player.points,
+      online: !!player.online,
+      level
+    }))
+  : [];
     });
 
     saveChallengeData();
@@ -626,12 +624,12 @@ async function syncCurrentPlayerToServer() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        playerId: getChallengePlayerId(),
-        name: playerName,
-        points: stats.points || 0,
-        online: true,
-        level
-      })
+  playerId: getChallengePlayerId(),
+  name: playerName,
+  points: stats.points || 0,
+  online: true,
+  level
+})
     });
 
     await fetchChallengeLeaderboardFromServer(level);
@@ -652,11 +650,11 @@ function syncPointsToServer(level = getCurrentChallengeLevel()) {
     challengeData.playerName !== "Player"
   ) {
     challengeSocket.emit("updateChallengePoints", {
-      playerId: getChallengePlayerId(),
-      name: challengeData.playerName,
-      points: stats.points || 0,
-      level: cleanLevel
-    });
+  playerId: getChallengePlayerId(),
+  name: challengeData.playerName,
+  points: stats.points || 0,
+  level: cleanLevel
+});
   }
 }
 
@@ -690,7 +688,6 @@ function applyLastChallengeResult() {
       stats.points += gain;
       stats.wins += 1;
       stats.streak += 1;
-
       if (stats.streak > stats.bestStreak) {
         stats.bestStreak = stats.streak;
       }
@@ -706,7 +703,6 @@ function applyLastChallengeResult() {
 
       stats.points -= loss;
       if (stats.points < 0) stats.points = 0;
-
       stats.losses += 1;
       stats.streak = 0;
 
@@ -719,7 +715,6 @@ function applyLastChallengeResult() {
 
     localStorage.removeItem("challengeResult");
     saveChallengeData();
-    renderAll();
     syncPointsToServer(resultLevel);
   } catch (err) {
     console.error("Error reading challengeResult:", err);
@@ -805,7 +800,6 @@ function startChallenge() {
     "challengeLevel",
     pageAiLevelSelect ? pageAiLevelSelect.value : getStoredChallengeAiLevel()
   );
-
   localStorage.setItem(
     "challengeFirstPlayer",
     pageFirstPlayerSelect ? pageFirstPlayerSelect.value : getStoredChallengeFirstPlayer()
@@ -817,10 +811,10 @@ function startChallenge() {
   const challengeSocket = getChallengeSocket();
   if (challengeSocket) {
     challengeSocket.emit("registerChallengePlayer", {
-      playerId: getChallengePlayerId(),
-      name: typedName,
-      level: getCurrentChallengeLevel()
-    });
+  playerId: getChallengePlayerId(),
+  name: typedName,
+  level: getCurrentChallengeLevel()
+});
   }
 
   if (typeof resetGame === "function") {
@@ -843,7 +837,6 @@ function patchChallengeGameSync() {
     const alreadyApplied = !!window.__challengeRoundApplied;
 
     const currentAiLevel = pageAiLevelSelect ? pageAiLevelSelect.value : getStoredChallengeAiLevel();
-
     const aiStarted =
       (pageFirstPlayerSelect ? pageFirstPlayerSelect.value : getStoredChallengeFirstPlayer()) === "ai";
 
@@ -881,17 +874,426 @@ function patchChallengeGameSync() {
   };
 }
 
+function bindChallengePageControls() {
+  if (!isChallengePage) return;
+
+  hydratePlayerNameIntoInput();
+  renderAll();
+
+  function saveFinalChallengeName() {
+    if (!pagePlayerNameInput) return;
+
+    const name = pagePlayerNameInput.value.trim();
+    const oldName = challengeData.playerName;
+
+    if (name) {
+      localStorage.setItem("challengePlayerName", name);
+      localStorage.setItem("playerName", name);
+
+      challengeData.playerName = name;
+      challengeData.online = true;
+
+      // ✅ on garde les mêmes points du navigateur
+      updateLocalLeaderboardName(oldName, name);
+    } else {
+      localStorage.removeItem("challengePlayerName");
+      challengeData.playerName = "Player";
+      challengeData.online = false;
+    }
+
+    renderAll();
+    syncCurrentPlayerToServer();
+
+    const challengeSocket = getChallengeSocket();
+    if (challengeSocket && name && name !== "Player") {
+      challengeSocket.emit("registerChallengePlayer", {
+  playerId: getChallengePlayerId(),
+  name: typedName,
+  level: getCurrentChallengeLevel()
+});
+    }
+  }
+
+  if (pagePlayerNameInput) {
+    pagePlayerNameInput.addEventListener("input", () => {
+      const name = pagePlayerNameInput.value.trim();
+
+      if (name) {
+        challengeData.playerName = name;
+        challengeData.online = true;
+      } else {
+        challengeData.playerName = "Player";
+        challengeData.online = false;
+      }
+
+      updateAvatar();
+      renderProfile();
+    });
+
+    pagePlayerNameInput.addEventListener("change", saveFinalChallengeName);
+    pagePlayerNameInput.addEventListener("blur", saveFinalChallengeName);
+
+    pagePlayerNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        saveFinalChallengeName();
+        pagePlayerNameInput.blur();
+      }
+    });
+  }
+
+  if (pageAiLevelSelect) {
+    const storedLevel = getStoredChallengeAiLevel();
+    if (VALID_LEVELS.includes(storedLevel)) {
+      pageAiLevelSelect.value = storedLevel;
+    }
+
+    // ✅ si level 1 existe encore dans le HTML, on le retire visuellement
+    Array.from(pageAiLevelSelect.options).forEach((opt) => {
+      if (opt.value === "1") {
+        opt.remove();
+      }
+    });
+
+    pageAiLevelSelect.addEventListener("change", async () => {
+      const cleanLevel = normalizeLevel(pageAiLevelSelect.value);
+
+      localStorage.setItem("challengeLevel", cleanLevel);
+      challengeData.selectedLeaderboardLevel = cleanLevel;
+
+      resetRoundSyncFlag();
+      renderAll();
+
+      await fetchChallengeLeaderboardFromServer(cleanLevel);
+
+      const challengeSocket = getChallengeSocket();
+      const name = (challengeData.playerName || "").trim();
+
+      if (challengeSocket && name && name !== "Player") {
+        challengeSocket.emit("registerChallengePlayer", {
+  playerId: getChallengePlayerId(),
+  name: typedName,
+  level: getCurrentChallengeLevel()
+});
+      }
+    });
+  }
+
+  if (pageFirstPlayerSelect) {
+    pageFirstPlayerSelect.value = getStoredChallengeFirstPlayer();
+
+    pageFirstPlayerSelect.addEventListener("change", () => {
+      localStorage.setItem("challengeFirstPlayer", pageFirstPlayerSelect.value);
+      resetRoundSyncFlag();
+    });
+  }
+
+  if (pageResetButton) {
+    pageResetButton.addEventListener("click", () => {
+      resetRoundSyncFlag();
+    });
+  }
+
+  if (pageModeSelect) {
+    pageModeSelect.value = "ai";
+  }
+}
+
+if (startChallengeBtn) {
+  startChallengeBtn.addEventListener("click", startChallenge);
+}
+
+if (simulateWinBtn) {
+  simulateWinBtn.addEventListener("click", () => {
+    handleWin({
+      aiStarted: false,
+      onlineGame: false,
+      fastWin: false,
+      aiLevel: getStoredChallengeAiLevel()
+    });
+  });
+}
+
+if (simulateLossBtn) {
+  simulateLossBtn.addEventListener("click", () => {
+    handleLoss({
+      onlineGame: false,
+      aiLevel: getStoredChallengeAiLevel()
+    });
+  });
+}
+
+if (simulateHardWinBtn) {
+  simulateHardWinBtn.addEventListener("click", () => {
+    handleWin({
+      aiStarted: true,
+      onlineGame: false,
+      fastWin: true,
+      aiLevel: getStoredChallengeAiLevel()
+    });
+  });
+}
+
+if (resetChallengeDataBtn) {
+  resetChallengeDataBtn.addEventListener("click", async () => {
+    const currentName = (challengeData.playerName || "").trim();
+    const currentLevel = getCurrentChallengeLevel();
+
+    if (!currentName || currentName === "Player") {
+      alert("Please enter your player name first.");
+      return;
+    }
+
+    const ok = confirm`(Reset stats for ${currentName} in Level ${currentLevel}?)`;
+    if (!ok) return;
+
+    challengeData.levelStats[currentLevel] = {
+      points: 0,
+      wins: 0,
+      losses: 0,
+      streak: 0,
+      bestStreak: 0
+    };
+
+    challengeData.history = challengeData.history.filter(
+      (entry) => normalizeLevel(entry.level) !== currentLevel
+    );
+
+    saveChallengeData();
+    renderAll();
+    resetRoundSyncFlag();
+
+    try {
+      await fetch("/api/challenge/leaderboard/upsert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+  playerId: getChallengePlayerId(),
+  name: currentName,
+  points: 0,
+  online: true,
+  level: currentLevel
+})
+      });
+
+      await fetchChallengeLeaderboardFromServer(currentLevel);
+    } catch (err) {
+      console.error("Failed to reset current player stats on server:", err);
+    }
+  });
+}
+
+if (shareChallengeBtn) {
+  shareChallengeBtn.addEventListener("click", async () => {
+    const level = getStoredChallengeAiLevel();
+    const first = getStoredChallengeFirstPlayer();
+
+    const shareUrl = `https://gomoku-morpion-5-online.onrender.com/challenge.html?level=${level}&first=${first}`;
+
+    const shareText = `🟢 I'm dominating Gomoku right now.
+
+🧠 Challenge your brain.
+😏 Think you're smarter?
+
+Join the challenge:
+${shareUrl}`;
+
+    try {
+      const imageBlob = await generateChallengeImage();
+
+      if (!imageBlob) return;
+
+      const file = new File([imageBlob], "challenge.png", {
+        type: "image/png"
+      });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: "Gomoku Challenge",
+          text: shareText,
+          url: shareUrl,
+          files: [file]
+        });
+      } else {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(imageBlob);
+        link.download = "challenge.png";
+        link.click();
+
+        await navigator.clipboard.writeText(shareText);
+        alert("Image downloaded + text copied 🚀");
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  });
+}
+
+async function generateChallengeImage() {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = 1080;
+  canvas.height = 1080;
+
+  ctx.fillStyle = "#f7efd8";
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.textAlign = "center";
+
+  ctx.fillStyl = "#edf0e3ef";
+  ctx.font = "bold 62px Arial";
+  ctx.fillText("GOMOKU", 540, 120);
+
+  ctx.fillStyle = "#777";
+  ctx.font = "26px Arial";
+  ctx.fillText("Morpion à 5 • Five in a row", 540, 165);
+
+  ctx.fillStyle = "#2563eb";
+  ctx.font = "bold 34px Arial";
+  ctx.fillText("Challenge your brain 🧠", 540, 220);
+
+  ctx.fillStyle = "#111";
+  ctx.font = "30px Arial";
+  ctx.fillText("Think you're smarter? 😏", 540, 265);
+
+  const selectedLevel = getSelectedLeaderboardLevel();
+
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "bold 28px Arial";
+  ctx.fillText`(TOP PLAYERS • LEVEL ${selectedLevel}, 540, 330)`;
+
+  const topPlayers = [...(challengeData.leaderboards[selectedLevel] || [])]
+    .sort((a, b) => b.points - a.points)
+    .slice(0, 3);
+
+  topPlayers.forEach((player, i) => {
+    const y = 420 + i * 80;
+
+    ctx.textAlign = "left";
+
+    ctx.beginPath();
+    ctx.arc(300, y - 10, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "#22c55e";
+    ctx.fill();
+
+    ctx.fillStyle = "#111";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText`(#${i + 1} ${player.name}, 330, y)`;
+
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "24px Arial";
+    ctx.fillText`(${player.points} pts, 700, y)`;
+  });
+
+  const logo = new Image();
+  logo.src = "logo.png";
+
+  await new Promise((resolve, reject) => {
+    logo.onload = resolve;
+    logo.onerror = reject;
+  });
+
+  const logoSize = 220;
+  ctx.drawImage(
+    logo,
+    canvas.width / 2 - logoSize / 2,
+    650,
+    logoSize,
+    logoSize
+  );
+
+  ctx.textAlign = "center";
+
+ctx.fillStyle = "#111";
+ctx.font = "bold 28px Arial";
+ctx.fillText`(Join the Level ${selectedLevel} challenge 🔥, 540, 910)`;
+
+ctx.fillStyle = "#2563eb";
+ctx.font = "bold 26px Arial";
+ctx.fillText("gomoku-morpion-5-online.onrender.com", 540, 960);
+
+  return new Promise((resolve) => {
+    canvas.toBlob(resolve, "image/png");
+  });
+}
+
 function bindCollapseCards() {
   document.querySelectorAll(".collapse-toggle").forEach((btn) => {
     btn.addEventListener("click", () => {
       const card = btn.closest(".collapsible-card");
-
       if (card) {
         card.classList.toggle("open");
       }
     });
   });
 }
-document.addEventListener("DOMContentLoaded", () => {
-  bindCollapseCards();
-});
+
+window.handleWin = handleWin;
+window.handleLoss = handleLoss;
+window.renderAllChallenge = renderAll;
+window.renderProfileChallenge = renderProfile;
+window.renderLeaderboardChallenge = renderLeaderboard;
+window.renderHistoryChallenge = renderHistory;
+
+bindChallengePageControls();
+applyLastChallengeResult();
+
+const urlParams = getChallengeParamsFromURL();
+
+if (urlParams.level && pageAiLevelSelect) {
+  pageAiLevelSelect.value = urlParams.level;
+  localStorage.setItem("challengeLevel", urlParams.level);
+  challengeData.selectedLeaderboardLevel = normalizeLevel(urlParams.level);
+}
+
+if (urlParams.first && pageFirstPlayerSelect) {
+  pageFirstPlayerSelect.value = urlParams.first;
+  localStorage.setItem("challengeFirstPlayer", urlParams.first);
+}
+
+renderAll();
+
+patchChallengeGameSync();
+resetRoundSyncFlag();
+bindCollapseCards();
+
+const isLocal =
+  location.hostname === "localhost" ||
+  location.hostname === "127.0.0.1";
+
+const isAdmin =
+  localStorage.getItem("adminMode") === "true";
+
+if (isLocal || isAdmin) {
+  document.querySelectorAll(".dev-only").forEach((el) => {
+    el.style.display = "block";
+  });
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  registerChallengeSocketListeners();
+
+  await fetchAllLeaderboardsFromServer();
+
+  const playerName = (
+    challengeData.playerName ||
+    localStorage.getItem("challengePlayerName") ||
+    localStorage.getItem("playerName") ||
+    ""
+  ).trim();
+
+  const level = getCurrentChallengeLevel();
+  const challengeSocket = getChallengeSocket();
+
+  if (challengeSocket && playerName && playerName !== "Player") {
+    challengeSocket.emit("registerChallengePlayer", { name: playerName, level });
+  }
+
+  await syncCurrentPlayerToServer();
+
+  renderProfile();
+  renderLeaderboard();
+  renderHistory();
+})
