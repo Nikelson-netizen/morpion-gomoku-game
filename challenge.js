@@ -449,7 +449,7 @@ function ensureLeaderboardTabs() {
       btn.classList.add("active");
     }
 
-    btn.textContent = Level `${selectedLevel}`
+    btn.textContent = `Level ${level}`;
     btn.addEventListener("click", () => {
       setSelectedLeaderboardLevel(level);
       ensureLeaderboardTabs();
