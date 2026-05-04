@@ -1138,11 +1138,11 @@ async function generateChallengeImage() {
   canvas.height = 1080;
 
   ctx.fillStyle = "#f7efd8";
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.textAlign = "center";
 
-  ctx.fillStyl = "#edf0e3ef";
+  ctx.fillStyle = "#edf0e3";
   ctx.font = "bold 62px Arial";
   ctx.fillText("GOMOKU", 540, 120);
 
@@ -1180,39 +1180,42 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "#111";
     ctx.font = "bold 30px Arial";
-    ctx.fillText`(#${i + 1} ${player.name}, 330, y)`;
+    ctx.fillText(`#${i + 1} ${player.name}`, 330, y);
 
     ctx.fillStyle = "#6b7280";
     ctx.font = "24px Arial";
-    ctx.fillText`(${player.points} pts, 700, y)`;
+    ctx.fillText(`${player.points} pts`, 700, y);
   });
 
   const logo = new Image();
   logo.src = "logo.png";
 
-  await new Promise((resolve, reject) => {
+  await new Promise((resolve) => {
     logo.onload = resolve;
-    logo.onerror = reject;
+    logo.onerror = resolve;
   });
 
   const logoSize = 220;
-  ctx.drawImage(
-    logo,
-    canvas.width / 2 - logoSize / 2,
-    650,
-    logoSize,
-    logoSize
-  );
+
+  if (logo.complete && logo.naturalWidth > 0) {
+    ctx.drawImage(
+      logo,
+      canvas.width / 2 - logoSize / 2,
+      650,
+      logoSize,
+      logoSize
+    );
+  }
 
   ctx.textAlign = "center";
 
-ctx.fillStyle = "#111";
-ctx.font = "bold 28px Arial";
-ctx.fillText`(Join the Level ${selectedLevel} challenge 🔥, 540, 910)`;
+  ctx.fillStyle = "#111";
+  ctx.font = "bold 28px Arial";
+  ctx.fillText(`Join the Level ${selectedLevel} challenge 🔥`, 540, 910);
 
-ctx.fillStyle = "#2563eb";
-ctx.font = "bold 26px Arial";
-ctx.fillText("gomoku-morpion-5-online.onrender.com", 540, 960);
+  ctx.fillStyle = "#2563eb";
+  ctx.font = "bold 26px Arial";
+  ctx.fillText("gomoku-morpion-5-online.onrender.com", 540, 960);
 
   return new Promise((resolve) => {
     canvas.toBlob(resolve, "image/png");
