@@ -1162,7 +1162,7 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = "#6b7280";
   ctx.font = "bold 28px Arial";
-  ctx.fillText`(TOP PLAYERS • LEVEL ${selectedLevel}, 540, 330)`;
+  ctx.fillText(`TOP PLAYERS • LEVEL ${selectedLevel}`, 540, 330);
 
   const topPlayers = [...(challengeData.leaderboards[selectedLevel] || [])]
     .sort((a, b) => b.points - a.points)
