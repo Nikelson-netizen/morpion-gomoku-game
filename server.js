@@ -21,7 +21,7 @@ app.use((req, res, next) => {
 
 const fs = require("fs");
 
-const possibleWwwPath = path.join(__dirname, "www");
+const possibleWwwPath = path.join(__dirname, "WWW");
 
 const PUBLIC_PATH = fs.existsSync(possibleWwwPath)
   ? possibleWwwPath
