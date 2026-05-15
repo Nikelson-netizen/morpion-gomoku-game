@@ -1920,3 +1920,30 @@ if ("serviceWorker" in navigator) {
     }
   });
 }
+
+function updateHomeTools() {
+  const modeSelect = document.getElementById("mode");
+  if (!modeSelect) return;
+
+  const mode = modeSelect.value;
+
+  document.body.classList.remove("mode-pvp", "mode-ai", "mode-online");
+
+  if (mode === "ai") {
+    document.body.classList.add("mode-ai");
+  } else if (mode === "online") {
+    document.body.classList.add("mode-online");
+  } else {
+    document.body.classList.add("mode-pvp");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const modeSelect = document.getElementById("mode");
+
+  updateHomeTools();
+
+  if (modeSelect) {
+    modeSelect.addEventListener("change", updateHomeTools);
+  }
+});

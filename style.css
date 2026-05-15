@@ -768,3 +768,29 @@ body.watching-mode .container {
 #installBtn:hover {
   transform: translateY(-1px);
 }
+
+.ai-tool,
+.online-tool {
+  display: none !important;
+}
+
+body.mode-ai .ai-tool {
+  display: flex !important;
+}
+
+body.mode-online .online-tool {
+  display: flex !important;
+}
+
+body.mode-pvp .pvp-tool {
+  display: inline-flex !important;
+}
+
+body.mode-online .online-panel {
+  display: grid !important;
+}
+
+body:not(.mode-online) .online-panel,
+body:not(.mode-online) #chatContainer {
+  display: none !important;
+}

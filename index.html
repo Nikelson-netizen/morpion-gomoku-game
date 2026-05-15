@@ -1,44 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gomoku Online</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <meta name="description" content="Play Gomoku online with real players. Train your brain and strategy.">
+  <title>Gomoku Online</title>
+  <meta name="description" content="Play Gomoku online with real players. Train your brain and strategy." />
 
   <link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#1f2937" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="Gomoku" />
-<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <meta name="theme-color" content="#1f2937" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Gomoku" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 
-  <meta property="og:title" content="Can you beat me? 🔥 Gomoku Online">
-  <meta property="og:description" content="Play Gomoku online with real players. Challenge your friends and win.">
-  <meta property="og:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png">
-  <meta property="og:url" content="https://gomoku-morpion-5-online.onrender.com/">
-  <meta property="og:type" content="website">
+  <meta property="og:title" content="Can you beat me? 🔥 Gomoku Online" />
+  <meta property="og:description" content="Play Gomoku online with real players. Challenge your friends and win." />
+  <meta property="og:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png" />
+  <meta property="og:url" content="https://gomoku-morpion-5-online.onrender.com/" />
+  <meta property="og:type" content="website" />
 
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Can you beat me? 🔥 Gomoku Online">
-  <meta name="twitter:description" content="Play Gomoku online with real players. Challenge your friends and win.">
-  <meta name="twitter:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png">
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Can you beat me? 🔥 Gomoku Online" />
+  <meta name="twitter:description" content="Play Gomoku online with real players. Challenge your friends and win." />
+  <meta name="twitter:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png" />
 
-  <link rel="shortcut icon" href="logo.png">
-  <link rel="stylesheet" href="style.css">
+  <link rel="shortcut icon" href="logo.png" />
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+
+<body class="mode-pvp">
   <div class="page-overlay">
     <div class="container">
 
       <header class="top-header">
-        <img src="logo.png" alt="Gomoku Logo" class="logo">
+        <img src="logo.png" alt="Gomoku Logo" class="logo" />
         <h1>jeu de morpion à 5 / Gomoku 5 Five in a Row</h1>
         <h2 id="status">Turn : Black</h2>
       </header>
 
       <section class="controls">
+
         <div class="control-group">
           <label for="mode">Mode</label>
           <select id="mode">
@@ -48,7 +50,7 @@
           </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group ai-tool">
           <label for="aiLevel">AI Level</label>
           <select id="aiLevel">
             <option value="1">Level 1 - Easy</option>
@@ -59,7 +61,7 @@
           </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group ai-tool">
           <label for="firstPlayer">First</label>
           <select id="firstPlayer">
             <option value="human" selected>Human</option>
@@ -67,7 +69,7 @@
           </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group online-tool">
           <label for="playerName">Player Name</label>
           <input
             id="playerName"
@@ -79,56 +81,60 @@
         </div>
 
         <div class="buttons-row">
-          <button id="fbLoginBtn">Login with Facebook</button>
-          <button id="goOnline" type="button">🔎 Find a player</button>
+          <button id="fbLoginBtn" class="online-tool" type="button">Login with Facebook</button>
+          <button id="goOnline" class="online-tool" type="button">🔎 Find a player</button>
+
           <button id="shareSiteBtn" type="button">🔗 Share Site</button>
-          <button id="reset" type="button">Restart</button>
-          <button id="leaveMatch" type="button">End Match</button>
+
+          <button id="reset" class="pvp-tool ai-tool" type="button">Restart</button>
+          <button id="leaveMatch" class="online-tool" type="button">End Match</button>
+
           <button id="challengeBtn" type="button">🔥 Challenge Me</button>
-          <button id="installBtn" style="display: none;">Install App</button>
+          <button id="installBtn" type="button" style="display: none;">Install App</button>
         </div>
       </section>
 
-      <section id="inviteBox" class="invite-box" style="display: none;">
+      <section id="inviteBox" class="invite-box online-tool" style="display: none;">
         <span id="inviteText">A player wants to play with you.</span>
+
         <div class="invite-actions">
           <button id="acceptInvite" type="button" class="online-btn">Accept</button>
           <button id="declineInvite" type="button" class="online-btn">Decline</button>
         </div>
       </section>
 
-      <section class="online-panel">
-  <div class="online-box collapsible-box">
-    <button class="collapse-toggle" type="button" data-target="playersPanel">
-      <span>Players Online</span>
-      <span class="collapse-icon">+</span>
-    </button>
+      <section class="online-panel online-tool">
+        <div class="online-box collapsible-box">
+          <button class="collapse-toggle" type="button" data-target="playersPanel">
+            <span>Players Online</span>
+            <span class="collapse-icon">+</span>
+          </button>
 
-    <div class="panel-status" id="playersStatus">
-      Select "Online Multiplayer" mode to find players.
-    </div>
+          <div class="panel-status" id="playersStatus">
+            Select "Online Multiplayer" mode to find players.
+          </div>
 
-    <div class="collapse-content" id="playersPanel">
-      <div id="onlineInfo">Enter your name and click "Find a player" to appear online.</div>
-      <div id="onlinePlayers">No players online</div>
-    </div>
-  </div>
+          <div class="collapse-content" id="playersPanel">
+            <div id="onlineInfo">Enter your name and click "Find a player" to appear online.</div>
+            <div id="onlinePlayers">No players online</div>
+          </div>
+        </div>
 
-  <div class="online-box collapsible-box">
-    <button class="collapse-toggle" type="button" data-target="matchesPanel">
-      <span>Public Matches</span>
-      <span class="collapse-icon">+</span>
-    </button>
+        <div class="online-box collapsible-box">
+          <button class="collapse-toggle" type="button" data-target="matchesPanel">
+            <span>Public Matches</span>
+            <span class="collapse-icon">+</span>
+          </button>
 
-    <div class="panel-status" id="matchesStatus">
-      No public matches
-    </div>
+          <div class="panel-status" id="matchesStatus">
+            No public matches
+          </div>
 
-    <div class="collapse-content" id="matchesPanel">
-      <div id="publicMatches">No public matches</div>
-    </div>
-  </div>
-</section>
+          <div class="collapse-content" id="matchesPanel">
+            <div id="publicMatches">No public matches</div>
+          </div>
+        </div>
+      </section>
 
       <div id="scoreBoard" class="score-board">
         <div class="score-title">MATCH SCORE</div>
@@ -146,7 +152,7 @@
     </div>
   </div>
 
-  <div id="chatContainer">
+  <div id="chatContainer" class="online-tool">
     <div id="chatHeader">
       💬 Chat <span id="chatBadge">●</span>
     </div>
@@ -166,23 +172,54 @@
   <script src="script.js"></script>
 
   <script>
-  window.fbAsyncInit = function () {
-    FB.init({
-      appId: "4342290986029133",
-      cookie: true,
-      xfbml: true,
-      version: "v19.0"
+    function updateHomeTools() {
+      const modeSelect = document.getElementById("mode");
+      if (!modeSelect) return;
+
+      const mode = modeSelect.value;
+
+      document.body.classList.remove("mode-pvp", "mode-ai", "mode-online");
+
+      if (mode === "ai") {
+        document.body.classList.add("mode-ai");
+      } else if (mode === "online") {
+        document.body.classList.add("mode-online");
+      } else {
+        document.body.classList.add("mode-pvp");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const modeSelect = document.getElementById("mode");
+
+      updateHomeTools();
+
+      if (modeSelect) {
+        modeSelect.addEventListener("change", updateHomeTools);
+      }
     });
-  };
+  </script>
 
-  (function (d, s, id) {
-    var js, fjs = d.getElementsByTagName(s)[0];
-    if (d.getElementById(id)) return;
-    js = d.createElement(s); js.id = id;
-    js.src = "https://connect.facebook.net/en_US/sdk.js";
-    fjs.parentNode.insertBefore(js, fjs);
-  }(document, 'script', 'facebook-jssdk'));
-</script>
+  <script>
+    window.fbAsyncInit = function () {
+      FB.init({
+        appId: "4342290986029133",
+        cookie: true,
+        xfbml: true,
+        version: "v19.0"
+      });
+    };
 
+    (function (d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+
+      js = d.createElement(s);
+      js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, "script", "facebook-jssdk"));
+  </script>
 </body>
 </html>
