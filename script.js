@@ -1921,29 +1921,58 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-function updateHomeTools() {
+function forceHomeToolsDisplay() {
   const modeSelect = document.getElementById("mode");
   if (!modeSelect) return;
 
   const mode = modeSelect.value;
 
-  document.body.classList.remove("mode-pvp", "mode-ai", "mode-online");
+  const aiTools = document.querySelectorAll(".ai-tool");
+  const onlineTools = document.querySelectorAll(".online-tool");
+  const pvpTools = document.querySelectorAll(".pvp-tool");
+
+  aiTools.forEach(el => el.style.display = "none");
+  onlineTools.forEach(el => el.style.display = "none");
+  pvpTools.forEach(el => el.style.display = "none");
 
   if (mode === "ai") {
-    document.body.classList.add("mode-ai");
-  } else if (mode === "online") {
-    document.body.classList.add("mode-online");
-  } else {
-    document.body.classList.add("mode-pvp");
+    aiTools.forEach(el => el.style.display = "");
+    pvpTools.forEach(el => el.style.display = "");
+  }
+
+  if (mode === "online") {
+    onlineTools.forEach(el => el.style.display = "");
+  }
+
+  if (mode === "pvp") {
+    pvpTools.forEach(el => el.style.display = "");
+  }
+
+  const inviteBox = document.getElementById("inviteBox");
+
+  if (inviteBox && mode !== "online") {
+    inviteBox.style.display = "none";
+  }
+
+  const chat = document.getElementById("chatContainer");
+
+  if (chat) {
+    chat.style.display = mode === "online" ? "block" : "none";
+  }
+
+  const onlinePanel = document.querySelector(".online-panel");
+
+  if (onlinePanel) {
+    onlinePanel.style.display = mode === "online" ? "" : "none";
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("load", () => {
   const modeSelect = document.getElementById("mode");
 
-  updateHomeTools();
+  forceHomeToolsDisplay();
 
   if (modeSelect) {
-    modeSelect.addEventListener("change", updateHomeTools);
+    modeSelect.addEventListener("change", forceHomeToolsDisplay);
   }
 });
