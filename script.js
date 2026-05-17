@@ -1727,23 +1727,24 @@ const shareSiteBtn = document.getElementById("shareSiteBtn");
 
 if (shareSiteBtn) {
   shareSiteBtn.addEventListener("click", async () => {
-    const siteUrl = "https://gomoku-morpion-5-online.onrender.com/";
+    const shareData = {
+  title: "Can you beat me? 🔥 Gomoku Online",
+  text: "Play Gomoku online with real players 🔥 Train your brain and strategy 🧠",
+  url: "https://gomoku-morpion-5-online.onrender.com/"
+};
 
     try {
       if (navigator.share) {
-        await navigator.share({
-          url: siteUrl
-        });
+        await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(siteUrl);
+        await navigator.clipboard.writeText(shareData.url);
         alert("Link copied!");
       }
-    } catch (err) {
-      console.log("Share cancelled:", err);
+    } catch (error) {
+      console.log(error);
     }
   });
 }
-
 function initCollapsiblePanels() {
   const toggles = document.querySelectorAll(".collapse-toggle");
 
