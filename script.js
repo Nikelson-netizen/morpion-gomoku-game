@@ -1730,7 +1730,7 @@ if (shareSiteBtn) {
     const shareData = {
   title: "Can you beat me? 🔥 Gomoku Online",
   text: "Play Gomoku online with real players 🔥 Train your brain and strategy 🧠",
-  url: "https://gomoku-morpion-5-online.onrender.com/?v=logo2"
+  url: "https://gomoku-morpion-5-online.onrender.com/"
 };
 
     try {
