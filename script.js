@@ -1728,10 +1728,10 @@ const shareSiteBtn = document.getElementById("shareSiteBtn");
 if (shareSiteBtn) {
   shareSiteBtn.addEventListener("click", async () => {
     const shareData = {
-      title: "Can you beat me? 🔥 Gomoku Online",
-      text: "I challenge you. Come play Gomoku and beat me 😏",
-      url: "https://gomoku-morpion-5-online.onrender.com/"
-    };
+  title: "Can you beat me? 🔥 Gomoku Online",
+  text: "Play Gomoku online with real players 🔥 Train your brain and strategy 🧠",
+  url: "https://gomoku-morpion-5-online.onrender.com/"
+};
 
     try {
       if (navigator.share) {
