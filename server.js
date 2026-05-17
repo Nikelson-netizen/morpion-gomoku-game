@@ -36,7 +36,7 @@ console.log("worker exists:", fs.existsSync(path.join(PUBLIC_PATH, "aiWorker.js"
 console.log("icon-192 exists:", fs.existsSync(path.join(PUBLIC_PATH, "icons", "icon-192.png")));
 console.log("click.mp3 exists:", fs.existsSync(path.join(PUBLIC_PATH, "sounds", "click.mp3")));
 console.log("ROOT files:", fs.readdirSync(__dirname));
-console.log("SOUNDS files:", fs.existsSync(path.join(_dirname, "sounds")) ? fs.readdirSync(path.join(_dirname, "sounds")) : "NO sounds folder");
+console.log("SOUNDS files:", fs.existsSync(path.join(__dirname, "sounds")) ? fs.readdirSync(path.join(_dirname, "sounds")) : "NO sounds folder");
 
 app.use(express.static(PUBLIC_PATH));
 
