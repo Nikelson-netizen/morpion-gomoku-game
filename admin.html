@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Gomoku Admin</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+
+      font-family: Arial, sans-serif;
+
+      background: #f3f4f6;
+
+      min-height: 100vh;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .admin-box {
+      width: 100%;
+      max-width: 430px;
+
+      background: white;
+
+      padding: 26px;
+
+      border-radius: 16px;
+
+      box-shadow:
+        0 10px 30px
+        rgba(0, 0, 0, 0.15);
+
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+
+      color: #111827;
+    }
+
+    .subtitle {
+      margin-top: 0;
+      margin-bottom: 25px;
+
+      color: #6b7280;
+    }
+
+    .admin-section {
+      margin-bottom: 25px;
+
+      padding: 18px;
+
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+
+      background: #fafafa;
+    }
+
+    .admin-section h2 {
+      margin-top: 0;
+
+      font-size: 18px;
+
+      color: #111827;
+    }
+
+    input {
+      width: 100%;
+
+      padding: 12px;
+
+      margin-bottom: 12px;
+
+      font-size: 16px;
+
+      border: 1px solid #aaa;
+      border-radius: 8px;
+
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+    }
+
+    button {
+      width: 100%;
+
+      padding: 13px;
+
+      border: none;
+      border-radius: 9px;
+
+      font-size: 16px;
+      font-weight: bold;
+
+      cursor: pointer;
+    }
+
+    #adminCloseTournamentBtn {
+      background: #dc2626;
+      color: white;
+    }
+
+    #adminResetChallengeBtn {
+      background: #f59e0b;
+      color: white;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    #adminStatus {
+      margin-top: 20px;
+
+      padding: 12px;
+
+      border-radius: 8px;
+
+      background: #eef2ff;
+
+      color: #1f2937;
+
+      font-size: 14px;
+    }
+
+    #adminLoginBtn {
+  background: #2563eb;
+  color: white;
+}
+
+    .warning {
+      margin-top: 10px;
+
+      font-size: 12px;
+
+      color: #6b7280;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="admin-box">
+
+  <h1>🛡️ Gomoku Admin</h1>
+
+<p class="subtitle">
+  Administrative Control Room
+</p>
+
+<!-- ========================= -->
+<!-- ADMIN LOGIN -->
+<!-- ========================= -->
+
+<div
+  id="adminLoginSection"
+  class="admin-section"
+>
+  <h2>🔐 Admin Login</h2>
+
+  <input
+    id="adminPassword"
+    type="password"
+    placeholder="Admin password"
+    autocomplete="current-password"
+  />
+
+  <button
+    id="adminLoginBtn"
+    type="button"
+  >
+    🔓 Login
+  </button>
+</div>
+
+
+<!-- ========================= -->
+<!-- ADMIN CONTROLS -->
+<!-- Cachés tant que non connecté -->
+<!-- ========================= -->
+
+<div
+  id="adminControls"
+  style="display:none;"
+>
+
+  <div class="admin-section">
+
+    <h2>🏆 Tournament</h2>
+
+    <input
+      id="adminTournamentCode"
+      type="text"
+      placeholder="Enter tournament code"
+      maxlength="20"
+      autocomplete="off"
+    />
+
+    <button
+      id="adminCloseTournamentBtn"
+      type="button"
+    >
+      🏁 Close Tournament
+    </button>
+
+  </div>
+
+
+  <div class="admin-section">
+
+    <h2>🔥 Challenge Data</h2>
+
+    <button
+      id="adminResetChallengeBtn"
+      type="button"
+    >
+      🔄 Reset Challenge Data
+    </button>
+
+  </div>
+
+</div>
+
+
+<div id="adminStatus">
+  🔒 Admin login required.
+</div>
+
+</div>
+
+
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Admin JavaScript -->
+  <script src="/admin.js"></script>
+
+</body>
+
+</html>
