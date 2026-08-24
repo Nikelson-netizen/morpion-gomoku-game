@@ -1,22 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Morpions/Gomoku</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link rel="shortcut icon" href="logo.png">
-  <link rel="stylesheet" href="style.css">
+  <title>Gomoku Online</title>
+  <meta name="description" content="Play Gomoku online with real players. Train your brain and strategy." />
+
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1f2937" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Gomoku" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <meta property="og:title" content="Can you beat me? 🔥 Gomoku Online" />
+  <meta property="og:description" content="Play Gomoku online with real players. Challenge your friends and win." />
+  <meta property="og:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png" />
+  <meta property="og:url" content="https://gomoku-morpion-5-online.onrender.com/" />
+  <meta property="og:type" content="website" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Can you beat me? 🔥 Gomoku Online" />
+  <meta name="twitter:description" content="Play Gomoku online with real players. Challenge your friends and win." />
+  <meta name="twitter:image" content="https://gomoku-morpion-5-online.onrender.com/logo.png" />
+
+  <link rel="shortcut icon" href="logo.png" />
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+
+<body class="mode-pvp">
   <div class="page-overlay">
     <div class="container">
 
       <header class="top-header">
-        <img src="logo.png" alt="Gomoku Logo" class="logo">
-        <h1> jeu de morpion à 5/Gomoku 5 Five in a Row</h1>
-        <h2 id="status">Turn: Black</h2>
-      </header>
+  <img src="logo.png" alt="Gomoku Logo" class="logo" />
+  <h1>Jeu de morpion à 5 / Gomoku 5 Five in a Row</h1>
+
+  <h2 id="status">Turn : Black</h2>
+</header>
 
       <section class="controls">
 
@@ -26,10 +48,11 @@
             <option value="pvp">2 Players</option>
             <option value="ai">Play vs AI</option>
             <option value="online">Online Multiplayer</option>
+            <option value="tournament">Tournament</option>
           </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group ai-tool">
           <label for="aiLevel">AI Level</label>
           <select id="aiLevel">
             <option value="1">Level 1 - Easy</option>
@@ -40,7 +63,7 @@
           </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group ai-tool">
           <label for="firstPlayer">First</label>
           <select id="firstPlayer">
             <option value="human" selected>Human</option>
@@ -48,7 +71,7 @@
           </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group online-tool">
           <label for="playerName">Player Name</label>
           <input
             id="playerName"
@@ -56,42 +79,408 @@
             placeholder="Enter your name"
             maxlength="20"
             autocomplete="off"
+          />
+        </div>
+
+        <div class="buttons-row">
+          <button id="fbLoginBtn" class="online-tool" type="button">Login with Facebook</button>
+          <button id="goOnline" class="online-tool" type="button">🔎 Find a player</button>
+
+          <button id="shareSiteBtn" type="button">🔗 Share Site</button>
+
+          <div class="tournament-actions tournament-tool">
+            <button id="createTournamentBtn" type="button">Create Tournament</button>
+            <button id="joinTournamentBtn" type="button">Join Tournament</button>
+          </div>
+
+          <button id="reset" class="pvp-tool ai-tool" type="button">Restart</button>
+          <button id="leaveMatch" class="online-tool" type="button">End Match</button>
+
+          <button id="challengeBtn" type="button">🔥 Challenge Me</button>
+          <button id="installBtn" type="button" style="display:none;">Install App</button>
+        </div>
+      </section>
+
+      <section id="inviteBox" class="invite-box" style="display:none;">
+        <span id="inviteText">A player wants to play with you.</span>
+
+        <div class="invite-actions">
+          <button id="acceptInvite" type="button" class="online-btn">Accept</button>
+          <button id="declineInvite" type="button" class="online-btn">Decline</button>
+        </div>
+      </section>
+
+      <section class="online-panel online-tool">
+        <div class="online-box collapsible-box open">
+          <button class="collapse-toggle" type="button" data-target="playersPanel">
+            <span>Players Online</span>
+            <span class="collapse-icon">🔽</span>
+          </button>
+
+          <div class="panel-status" id="playersStatus">
+            Select "Online Multiplayer" mode to find players.
+          </div>
+
+          <div class="collapse-content" id="playersPanel">
+            <div id="onlineInfo">Enter your name and click "Find a player" to appear online.</div>
+            <div id="onlinePlayers">No players online</div>
+          </div>
+        </div>
+
+        <div class="online-box collapsible-box">
+          <button class="collapse-toggle" type="button" data-target="matchesPanel">
+            <span>Public Matches</span>
+            <span class="collapse-icon">🔽</span>
+          </button>
+
+          <div class="panel-status" id="matchesStatus">
+            No public matches
+          </div>
+
+          <div class="collapse-content" id="matchesPanel">
+            <div id="publicMatches">No public matches</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tournamentPanel" class="tournament-panel tournament-tool" style="display:none;">
+        <h3 class="tournament-title">🏆 Tournament Mode</h3>
+
+        <div class="tournament-box">
+
+<label for="tournamentPlayerName">Player Name</label>
+<input
+  id="tournamentPlayerName"
+  type="text"
+  placeholder="Your name"
+  maxlength="20"
+/>
+
+  <label for="tournamentName">Tournament Name</label>
+  <input id="tournamentName" type="text" placeholder="Example: Kelly Cup" maxlength="30" />
+
+  <label for="tournamentCode">Tournament Code</label>
+  <input id="tournamentCode" type="text" placeholder="Example: KELLY2026" maxlength="20" />
+
+          <div id="tournamentInfo">
+  Organizer creates a tournament. Players join with the code.
+</div>
+
+<div class="players-section" style="margin-top:8px; font-weight:bold;">
+  <div id="playersHeader" style="cursor:pointer;">
+    🏆 Tournament Players <span id="playersToggle" class="players-arrow">▶️</span>
+  </div>
+
+  <div id="playersContent" style="display:none;">
+    <div id="tournamentPlayersList"></div>
+  </div>
+  <button id="startTournamentBtn" type="button" style="display:none;">
+  ▶️ Start Tournament
+</button>
+</div>
+
+<div
+  id="tournamentMatchesSection"
+  class="matches-section"
+  style="display:none; margin-top:12px; font-weight:bold;"
+>
+  <div id="tournamentMatchesHeader" style="cursor:pointer;">
+    ⚔️ Tournament Matches
+    <span
+      id="tournamentMatchesToggle"
+      style="font-size:26px; color:#28a745; margin-left:8px;"
+    >
+      ▼
+    </span>
+  </div>
+
+  <div id="tournamentMatchesContent" style="display:block;">
+    <div id="tournamentMatchesList"></div>
+  </div>
+</div>
+
+<div id="tournamentStandingsSection">
+  <h3>
+    📊 Tournament Standings
+  </h3>
+
+  <div id="tournamentStandingsContent">
+    Standings will appear after a series.
+  </div>
+</div>
+
+<div class="tournament-rules collapsible-box">
+          <button class="collapse-toggle" type="button" data-target="tournamentRulesContent">
+    <span>🏆 Tournament Rules</span>
+    <span class="collapse-icon"
+          style="font-size:28px; color:#28a745; margin-left:8px;">
+        ▶️
+    </span>
+  </button>
+
+          <div class="collapse-content" id="tournamentRulesContent" style="display:none;">
+            <p>Maximum players: 10</p>
+            <p>Series maximum: 7 matches</p>
+            <p>First to 4 victories wins the series</p>
+            <p>Winner: +3 points</p>
+            <p>Loser: 0 point</p>
+            <p>No Restart</p>
+            <p>Quit during a game = game lost</p>
+<p>Disconnected for 3 minutes = series defeat</p>
+            <p>Too slow = match lost</p>
+            <p>No move for 2 minutes = match lost</p>
+          </div>
+        </div>
+      </section>
+
+      <div id="scoreBoard" class="score-board">
+        <div class="score-title" style="margin-bottom:-3px; text-align:center;">
+          MATCH SCORE
+        </div>
+
+        <div style="display:flex; justify-content:center; align-items:center; gap:18px; margin-bottom:-6px;">
+          <div id="scoreText" style="font-size:15px; font-weight:bold; white-space:nowrap; margin-top:-2px;">
+            Black 0 - 0 White
+          </div>
+
+          <button
+            id="undoLastMoveBtn"
+            type="button"
+            title="Undo last move"
+            style="width:48px; height:48px; border:none; border-radius:12px; cursor:pointer; font-size:24px;"
           >
+            🔄
+          </button>
         </div>
-
-        <div class="control-group button-group">
-          <label class="hidden-label">Online</label>
-          <button id="goOnline" type="button">Go Online</button>
-        </div>
-
-        <div class="control-group button-group">
-          <label class="hidden-label">Action</label>
-          <button id="reset" type="button">Restart</button>
-        </div>
-
-      </section>
-
-      <section class="online-panel">
-        <div class="online-box">
-          <h3>Players Online</h3>
-          <div id="onlineInfo">Enter your name and click "Go Online" to appear online.</div>
-          <div id="onlinePlayers">No players online</div>
-        </div>
-
-        <div class="online-box">
-          <h3>Public Matches</h3>
-          <div id="publicMatches">No public matches</div>
-        </div>
-      </section>
+      </div>
 
       <main class="game-area">
-        <div id="board" aria-label="Gomoku game board"></div>
+        <div id="shareContainer" style="display:none; text-align:center; margin-bottom:10px;">
+          <button id="shareMatchBtn" type="button">📤 Share this match</button>
+        </div>
+
+        <div id="tournamentTurnTimer" hidden>
+  <span>⏱️ Time Left</span>
+  <strong id="tournamentTurnTimerValue">02:00</strong>
+</div>
+
+        <div id="boardWrapper">
+
+  <div
+    id="board"
+    aria-label="Gomoku game board"
+  ></div>
+
+  <div
+    id="tournamentTrophyOverlay"
+    hidden
+  >
+    <div class="trophy-card">
+
+      <div class="trophy-icon">
+        🏆
+      </div>
+
+      <h2>Tournament Finished</h2>
+
+      <div class="trophy-ranking">
+        <div>
+          🥇 Champion:
+          <strong id="trophyChampion">—</strong>
+        </div>
+
+        <div>
+          🥈 Runner-up:
+          <strong id="trophyRunnerUp">—</strong>
+        </div>
+
+        <div>
+          🥉 Third Place:
+          <strong id="trophyThirdPlace">—</strong>
+        </div>
+      </div>
+
+      <p class="trophy-congratulations">
+        🎉 Congratulations!
+      </p>
+
+      <div class="trophy-final-match">
+        <strong>Final Match</strong>
+
+        <div id="trophyFinalScore">
+          —
+        </div>
+      </div>
+
+      <button
+        id="closeTournamentBtn"
+        type="button"
+        hidden
+      >
+        🏁 Close Tournament
+      </button>
+
+    </div>
+  </div>
+
+</div>
       </main>
 
     </div>
   </div>
 
+  <div id="chatContainer" class="chat-tool chat-collapsed">
+
+  <div id="chatHeader">
+    💬 Chat <span id="chatBadge">●</span>
+  </div>
+
+  <div id="chatContent">
+
+    <div id="chatBox">
+      Aucun message...
+    </div>
+
+    <div class="chat-input-row">
+      <input
+        id="chatInput"
+        type="text"
+        placeholder="Message..."
+        autocomplete="off"
+      />
+
+      <button
+        id="chatSend"
+        type="button"
+        onclick="sendMessage()"
+      >
+        ➤
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
   <script src="/socket.io/socket.io.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <script src="script.js"></script>
+
+  <script>
+    function updateHomeTools() {
+      const modeSelect = document.getElementById("mode");
+      if (!modeSelect) return;
+
+      const mode = modeSelect.value;
+
+      const tournamentPanel = document.getElementById("tournamentPanel");
+      const undoBtn = document.getElementById("undoLastMoveBtn");
+      const challengeBtn = document.getElementById("challengeBtn");
+
+      document.body.classList.remove(
+        "mode-pvp",
+        "mode-ai",
+        "mode-online",
+        "mode-tournament"
+      );
+
+      document.body.classList.add("mode-" + mode);
+
+      document.querySelectorAll(".ai-tool").forEach(el => {
+        el.style.display = mode === "ai" ? "" : "none";
+      });
+
+      document.querySelectorAll(".online-tool").forEach(el => {
+        el.style.display = mode === "online" ? "" : "none";
+      });
+
+      document.querySelectorAll(".pvp-tool").forEach(el => {
+        el.style.display = mode === "pvp" ? "" : "none";
+      });
+
+      document.querySelectorAll(".tournament-tool").forEach(el => {
+        el.style.display = mode === "tournament" ? "" : "none";
+      });
+
+      if (tournamentPanel) {
+        tournamentPanel.style.display = mode === "tournament" ? "block" : "none";
+      }
+
+      if (undoBtn) {
+        undoBtn.style.display = mode === "tournament" ? "none" : "inline-flex";
+      }
+
+      if (challengeBtn) {
+        challengeBtn.style.display =
+          mode === "ai" || mode === "pvp" ? "inline-flex" : "none";
+      }
+
+      const chatContainer =
+  document.getElementById(
+    "chatContainer"
+  );
+
+if (chatContainer) {
+  chatContainer.style.display =
+    mode === "online" ||
+    mode === "tournament"
+      ? "block"
+      : "none";
+}
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const modeSelect = document.getElementById("mode");
+
+      updateHomeTools();
+
+      if (modeSelect) {
+        modeSelect.addEventListener("change", updateHomeTools);
+      }
+    });
+  </script>
+
+  <script>
+    window.fbAsyncInit = function () {
+      FB.init({
+        appId: "4342290986029133",
+        cookie: true,
+        xfbml: true,
+        version: "v19.0"
+      });
+    };
+
+    (function (d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+
+      js = d.createElement(s);
+      js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, "script", "facebook-jssdk"));
+  </script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".collapse-toggle").forEach(button => {
+        button.addEventListener("click", () => {
+          const targetId = button.dataset.target;
+          const content = document.getElementById(targetId);
+          const icon = button.querySelector(".collapse-icon");
+
+          if (!content) return;
+
+          const isOpen = content.style.display === "block";
+          content.style.display = isOpen ? "none" : "block";
+
+          if (icon) {
+            icon.textContent = isOpen ? "▶️" : "▼";
+          }
+        });
+      });
+    });
+  </script>
 </body>
 </html>
