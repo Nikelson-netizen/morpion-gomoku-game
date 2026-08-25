@@ -289,7 +289,7 @@ if (
   );
 }
 
-const placeSound = new Audio("/sounds/click.mp3");
+const placeSound = new Audio("/click.mp3");
 placeSound.preload = "auto";
 
 function playPlaceSound() {
