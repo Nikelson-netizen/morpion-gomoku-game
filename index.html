@@ -33,14 +33,102 @@
 </head>
 
 <body class="mode-pvp">
-  <div class="page-overlay">
+
+  <section id="homePage">
+    <div class="home-page-content">
+
+      <img src="logo.png" alt="Gomoku Online Logo" class="home-logo" />
+
+      <h1>Gomoku Online</h1>
+
+      <p class="home-intro">
+        Play Gomoku online, challenge the AI, play locally with a friend,
+        compete against other players online, or join tournaments.
+      </p>
+
+      <section class="home-section">
+        <h2>About Gomoku</h2>
+        <p>
+  Gomoku is a classic strategy board game played by two players using
+  two different colors of stones. Players take turns placing one stone
+  at a time on the board. The goal is to be the first player to connect
+  five stones of the same color in a continuous row horizontally,
+  vertically, or diagonally.
+</p>
+      </section>
+
+      <section class="home-section">
+        <h2>How to Play</h2>
+        <p>
+          Players take turns placing one stone on an empty intersection of the board.
+          Think ahead, block your opponent, and build your own line of five stones.
+        </p>
+      </section>
+
+      <section class="home-section">
+        <h2>Rules</h2>
+        <p>
+  One player starts the game, and players then alternate turns,
+  placing one stone at a time on an empty intersection.
+  Once a stone is placed, it remains on the board.
+  The first player to connect five stones of the same color
+  in a continuous horizontal, vertical, or diagonal line wins the game.
+</p>
+      </section>
+
+      <section class="home-section">
+        <h2>Game Modes</h2>
+
+        <h3>2 Players</h3>
+        <p>
+          Play locally against another person on the same device.
+        </p>
+
+        <h3>AI</h3>
+        <p>
+          Challenge the computer and choose from several difficulty levels.
+        </p>
+
+        <h3>Online Multiplayer</h3>
+        <p>
+          Find another player online and play a real-time Gomoku match.
+        </p>
+
+        <h3>Tournament</h3>
+        <p>
+          Create or join tournaments and compete in a series of matches against
+          multiple players.
+        </p>
+      </section>
+
+      <button id="homePlayButton" type="button">
+        ▶️ Play Gomoku
+      </button>
+
+      <footer class="home-footer">
+        <a href="/privacy.html">Privacy Policy</a>
+        <span> | </span>
+        <a href="/terms.html">Terms of Service</a>
+      </footer>
+
+    </div>
+  </section>
+
+  <div id="gamePage" style="display:none;">
+    <div class="page-overlay">
     <div class="container">
 
       <header class="top-header">
   <img src="logo.png" alt="Gomoku Logo" class="logo" />
   <h1>Jeu de morpion à 5 / Gomoku 5 Five in a Row</h1>
 
+  <div class="status-row">
+  <button id="homeBtn" type="button" class="home-icon-btn" title="Home">
+    🏠
+  </button>
+
   <h2 id="status">Turn : Black</h2>
+</div>
 </header>
 
       <section class="controls">
@@ -331,6 +419,7 @@
 
     </div>
   </div>
+  </div>
 
   <div id="chatContainer" class="chat-tool chat-collapsed">
 
@@ -485,5 +574,40 @@ if (chatContainer) {
       });
     });
   </script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const homePage = document.getElementById("homePage");
+    const gamePage = document.getElementById("gamePage");
+    const homePlayButton = document.getElementById("homePlayButton");
+    const homeBtn = document.getElementById("homeBtn");
+
+if (homeBtn) {
+  homeBtn.addEventListener("click", () => {
+    if (gamePage) {
+      gamePage.style.display = "none";
+    }
+
+    if (homePage) {
+      homePage.style.display = "block";
+    }
+
+    window.scrollTo(0, 0);
+  });
+}
+
+    if (homePlayButton) {
+      homePlayButton.addEventListener("click", () => {
+        if (homePage) {
+          homePage.style.display = "none";
+        }
+
+        if (gamePage) {
+          gamePage.style.display = "block";
+        }
+      });
+    }
+  });
+</script>
 </body>
 </html>

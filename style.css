@@ -1196,3 +1196,127 @@ body.mode-tournament #tournamentTurnTimer {
     transform: rotate(-3deg) scale(1.05);
   }
 }
+
+#homePage .home-logo {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 20px auto;
+}
+
+#homePage {
+  min-height: 100vh;
+  padding: 40px 20px;
+  box-sizing: border-box;
+
+  background:
+    linear-gradient(rgba(255,255,255,0.88), rgba(255,255,255,0.88)),
+    url("/images/home-bg.jpg") center/cover no-repeat fixed;
+}
+
+.home-page-content {
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+#homePage .home-intro,
+#homePage .home-section p {
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+  padding: 0 15px;
+}
+
+.status-row {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.home-icon-btn {
+  position: absolute;
+  left: 25px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 22px;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+}
+
+.home-icon-btn:hover {
+  transform: scale(1.05);
+}
+
+/* ===== PRIVACY / LEGAL PAGE ===== */
+
+.legal-page {
+  min-height: 100vh;
+  padding: 40px 20px;
+  box-sizing: border-box;
+
+  background:
+    linear-gradient(rgba(255,255,255,0.94), rgba(255,255,255,0.94)),
+    url("/images/home-bg.jpg") center/cover no-repeat fixed;
+}
+
+.legal-container {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 20px;
+  box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+
+  text-align: left;
+}
+
+.legal-logo {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 20px auto;
+}
+
+.legal-container h1 {
+  text-align: center;
+}
+
+.legal-container h2 {
+  margin-top: 32px;
+}
+
+.legal-container h3 {
+  margin-top: 22px;
+}
+
+.legal-container p,
+.legal-container li {
+  line-height: 1.7;
+}
+
+.legal-updated {
+  text-align: center;
+  opacity: 0.7;
+}
+
+.legal-home-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.legal-footer {
+  margin-top: 45px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+  text-align: center;
+}

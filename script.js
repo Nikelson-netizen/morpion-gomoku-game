@@ -168,6 +168,42 @@ function getTypedPlayerName() {
   return playerNameInput ? playerNameInput.value.trim() : "";
 }
 
+function isAndroidApp() {
+  try {
+    if (
+      window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === "function" &&
+      window.Capacitor.isNativePlatform()
+    ) {
+      return true;
+    }
+  } catch (e) {}
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get("app") === "android";
+}
+
+function loadAdSenseForWeb() {
+  if (isAndroidApp()) {
+    console.log("Android app detected: AdSense disabled.");
+    return;
+  }
+
+  if (document.querySelector('script[data-gomoku-adsense="true"]')) {
+    return;
+  }
+
+  const adsScript = document.createElement("script");
+  adsScript.async = true;
+  adsScript.crossOrigin = "anonymous";
+  adsScript.dataset.gomokuAdsense = "true";
+
+  adsScript.src =
+    "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1324909808984599";
+
+  document.head.appendChild(adsScript);
+}
+
 function isChallengeModeActive() {
   return (
     modeSelect &&
