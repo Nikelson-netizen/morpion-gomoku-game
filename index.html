@@ -34,7 +34,7 @@
 
 <body class="mode-pvp">
 
-  <section id="homePage">
+  <section id="homePage" style="display:none;">
     <div class="home-page-content">
 
       <img src="logo.png" alt="Gomoku Online Logo" class="home-logo" />
@@ -114,7 +114,7 @@
     </div>
   </section>
 
-  <div id="gamePage" style="display:none;">
+  <div id="gamePage">
     <div class="page-overlay">
     <div class="container">
 
@@ -123,11 +123,22 @@
   <h1>Jeu de morpion à 5 / Gomoku 5 Five in a Row</h1>
 
   <div class="status-row">
-  <button id="homeBtn" type="button" class="home-icon-btn" title="Home">
-    🏠
-  </button>
+
+  <div class="header-left-tools">
+
+    <button id="infoBtn" type="button" class="info-icon-btn" title="Information">
+      ℹ️
+    </button>
+  </div>
 
   <h2 id="status">Turn : Black</h2>
+
+</div>
+
+<div id="infoMenu" class="info-menu">
+  <a href="#" id="aboutGomokuLink">About Gomoku</a>
+  <a href="/privacy.html">Privacy Policy</a>
+  <a href="/terms.html">Terms of Service</a>
 </div>
 </header>
 
@@ -580,10 +591,15 @@ if (chatContainer) {
     const homePage = document.getElementById("homePage");
     const gamePage = document.getElementById("gamePage");
     const homePlayButton = document.getElementById("homePlayButton");
-    const homeBtn = document.getElementById("homeBtn");
 
-if (homeBtn) {
-  homeBtn.addEventListener("click", () => {
+    const infoBtn = document.getElementById("infoBtn");
+const infoMenu = document.getElementById("infoMenu");
+const aboutGomokuLink = document.getElementById("aboutGomokuLink");
+
+if (aboutGomokuLink) {
+  aboutGomokuLink.addEventListener("click", (e) => {
+    e.preventDefault();
+
     if (gamePage) {
       gamePage.style.display = "none";
     }
@@ -592,9 +608,31 @@ if (homeBtn) {
       homePage.style.display = "block";
     }
 
+    if (infoMenu) {
+      infoMenu.style.display = "none";
+    }
+
     window.scrollTo(0, 0);
   });
 }
+
+if (infoBtn && infoMenu) {
+  infoBtn.addEventListener("click", () => {
+    infoMenu.style.display =
+      infoMenu.style.display === "block" ? "none" : "block";
+  });
+}
+
+document.addEventListener("click", (e) => {
+  if (
+    infoMenu &&
+    infoBtn &&
+    !infoMenu.contains(e.target) &&
+    !infoBtn.contains(e.target)
+  ) {
+    infoMenu.style.display = "none";
+  }
+});
 
     if (homePlayButton) {
       homePlayButton.addEventListener("click", () => {

@@ -1320,3 +1320,52 @@ body.mode-tournament #tournamentTurnTimer {
   border-top: 1px solid #ddd;
   text-align: center;
 }
+
+.header-left-tools {
+  position: absolute;
+  left: 25px;
+  display: flex;
+  gap: 10px;
+}
+
+.info-icon-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 22px;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+}
+
+.info-menu {
+  display: none;
+  position: absolute;
+  top: 150px;
+  left: 30px;
+  width: 220px;
+  padding: 15px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.18);
+  z-index: 1000;
+}
+
+.info-menu a {
+  display: block;
+  padding: 10px;
+  text-decoration: none;
+  color: #333;
+}
+
+.info-menu a:hover {
+  background: #f2f2f2;
+  border-radius: 8px;
+}
+
+.header-left-tools .home-icon-btn,
+.header-left-tools .info-icon-btn {
+  position: static;
+  left: auto;
+}
