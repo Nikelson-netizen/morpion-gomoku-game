@@ -126,9 +126,9 @@
 
   <div class="header-left-tools">
 
-    <button id="infoBtn" type="button" class="info-icon-btn" title="Information">
-      ℹ️
-    </button>
+    <button id="infoBtn" type="button" class="info-icon-btn" title="Menu">
+  ☰ Menu
+</button>
   </div>
 
   <h2 id="status">Turn : Black</h2>
@@ -198,7 +198,6 @@
           <button id="reset" class="pvp-tool ai-tool" type="button">Restart</button>
           <button id="leaveMatch" class="online-tool" type="button">End Match</button>
 
-          <button id="challengeBtn" type="button">🔥 Challenge Me</button>
           <button id="installBtn" type="button" style="display:none;">Install App</button>
         </div>
       </section>
@@ -426,6 +425,20 @@
   </div>
 
 </div>
+
+        <section class="home-challenge-section">
+          <h2>🔥 Gomoku Challenge</h2>
+
+          <p>
+            Play against the AI, earn points, improve your streak,
+            climb the leaderboard, and track your challenge history.
+          </p>
+
+          <a href="challenge.html" class="challenge-link-btn">
+            Open Challenge
+          </a>
+        </section>
+
       </main>
 
     </div>
@@ -478,7 +491,6 @@
 
       const tournamentPanel = document.getElementById("tournamentPanel");
       const undoBtn = document.getElementById("undoLastMoveBtn");
-      const challengeBtn = document.getElementById("challengeBtn");
 
       document.body.classList.remove(
         "mode-pvp",
@@ -511,11 +523,6 @@
 
       if (undoBtn) {
         undoBtn.style.display = mode === "tournament" ? "none" : "inline-flex";
-      }
-
-      if (challengeBtn) {
-        challengeBtn.style.display =
-          mode === "ai" || mode === "pvp" ? "inline-flex" : "none";
       }
 
       const chatContainer =
