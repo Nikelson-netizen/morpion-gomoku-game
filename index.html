@@ -522,8 +522,9 @@
       }
 
       if (undoBtn) {
-        undoBtn.style.display = mode === "tournament" ? "none" : "inline-flex";
-      }
+  undoBtn.style.display =
+    (mode === "ai" || mode === "pvp") ? "" : "none";
+}
 
       const chatContainer =
   document.getElementById(
