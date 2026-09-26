@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Contact - Gomoku Online</title>
+
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body class="contact-page">
+
+  <main class="contact-container">
+
+    <img src="/logo.png" alt="Gomoku Online Logo" class="contact-logo">
+
+    <h1>Contact</h1>
+
+    <p class="contact-intro">
+      Have a question, suggestion, or problem with Gomoku Online?
+      Send me a message below and I will do my best to respond as soon as possible.
+    </p>
+
+    <form id="contactForm">
+
+      <label for="contactName">Name</label>
+      <input
+        type="text"
+        id="contactName"
+        name="name"
+        required
+      >
+
+      <label for="contactEmail">Email</label>
+      <input
+        type="email"
+        id="contactEmail"
+        name="email"
+        required
+      >
+
+      <label for="contactMessage">Message</label>
+      <textarea
+        id="contactMessage"
+        name="message"
+        rows="6"
+        required
+      ></textarea>
+
+      <button type="submit" class="contact-send-btn">
+        Send
+      </button>
+
+      <p id="contactStatus"></p>
+
+    </form>
+
+    <a href="/index.html" class="contact-back-button">
+      ← Back to Gomoku Online
+    </a>
+
+  </main>
+
+  <script>
+  const contactForm = document.getElementById("contactForm");
+  const contactStatus = document.getElementById("contactStatus");
+
+  if (contactForm) {
+    contactForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById("contactName").value.trim();
+      const email = document.getElementById("contactEmail").value.trim();
+      const message = document.getElementById("contactMessage").value.trim();
+
+      contactStatus.textContent = "Sending...";
+
+      try {
+        const response = await fetch("/api/contact", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            message
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          contactStatus.textContent = "Message sent successfully.";
+          contactForm.reset();
+        } else {
+          contactStatus.textContent = data.error || "Unable to send message.";
+        }
+      } catch (error) {
+        contactStatus.textContent = "Unable to send message.";
+      }
+    });
+  }
+</script>
+
+</body>
+</html>

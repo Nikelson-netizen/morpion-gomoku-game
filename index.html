@@ -34,83 +34,6 @@
 
 <body class="mode-pvp">
 
-  <section id="homePage" style="display:none;">
-    <div class="home-page-content">
-
-      <img src="logo.png" alt="Gomoku Online Logo" class="home-logo" />
-
-      <h1>Gomoku Online</h1>
-
-      <p class="home-intro">
-        Play Gomoku online, challenge the AI, play locally with a friend,
-        compete against other players online, or join tournaments.
-      </p>
-
-      <section class="home-section">
-        <h2>About Gomoku</h2>
-        <p>
-  Gomoku is a classic strategy board game played by two players using
-  two different colors of stones. Players take turns placing one stone
-  at a time on the board. The goal is to be the first player to connect
-  five stones of the same color in a continuous row horizontally,
-  vertically, or diagonally.
-</p>
-      </section>
-
-      <section class="home-section">
-        <h2>How to Play</h2>
-        <p>
-          Players take turns placing one stone on an empty intersection of the board.
-          Think ahead, block your opponent, and build your own line of five stones.
-        </p>
-      </section>
-
-      <section class="home-section">
-        <h2>Rules</h2>
-        <p>
-  One player starts the game, and players then alternate turns,
-  placing one stone at a time on an empty intersection.
-  Once a stone is placed, it remains on the board.
-  The first player to connect five stones of the same color
-  in a continuous horizontal, vertical, or diagonal line wins the game.
-</p>
-      </section>
-
-      <section class="home-section">
-        <h2>Game Modes</h2>
-
-        <h3>2 Players</h3>
-        <p>
-          Play locally against another person on the same device.
-        </p>
-
-        <h3>AI</h3>
-        <p>
-          Challenge the computer and choose from several difficulty levels.
-        </p>
-
-        <h3>Online Multiplayer</h3>
-        <p>
-          Find another player online and play a real-time Gomoku match.
-        </p>
-
-        <h3>Tournament</h3>
-        <p>
-          Create or join tournaments and compete in a series of matches against
-          multiple players.
-        </p>
-      </section>
-
-      <button id="homePlayButton" type="button">
-        ▶️ Play Gomoku
-      </button>
-
-      <footer class="home-footer">
-        <a href="/privacy.html">Privacy Policy</a>
-        <span> | </span>
-        <a href="/terms.html">Terms of Service</a>
-      </footer>
-
     </div>
   </section>
 
@@ -136,9 +59,10 @@
 </div>
 
 <div id="infoMenu" class="info-menu">
-  <a href="#" id="aboutGomokuLink">About Gomoku</a>
+  <a href="/about.html">About Us</a>
   <a href="/privacy.html">Privacy Policy</a>
   <a href="/terms.html">Terms of Service</a>
+  <a href="/contact.html">Contact</a>
 </div>
 </header>
 
@@ -426,6 +350,278 @@
 
 </div>
 
+<section class="game-info-section">
+
+  <button
+    class="game-info-toggle"
+    type="button"
+    onclick="toggleGameInfo()"
+  >
+    <span>🎮 About Gomoku Online — How to Play & Game Modes</span>
+    <span id="gameInfoArrow">▶️</span>
+  </button>
+
+  <div id="gameInfoContent" style="display:none;">
+
+    <h2>🎮 About Gomoku Online</h2>
+
+  <p>
+    Gomoku Online – Five in a Row is a strategy board game where
+    two players take turns placing stones on the board.
+    The objective is simple: be the first player to connect five
+    stones of your color in a continuous horizontal, vertical,
+    or diagonal line.
+  </p>
+
+  <p>
+    You can play locally with another person, challenge the computer,
+    play against real players online, participate in challenges,
+    or create and join tournaments.
+  </p>
+
+
+  <h3>🎯 How to Play</h3>
+
+  <p>
+    Players take turns placing one stone at a time on an empty
+    intersection of the board.
+  </p>
+
+  <p>
+    Once a stone has been placed, the turn passes to the other player.
+    Think ahead, block your opponent's combinations, and try to create
+    your own line of five stones.
+  </p>
+
+  <p>
+    The first player to connect five stones horizontally,
+    vertically, or diagonally wins the game.
+  </p>
+
+
+  <h3>👥 2 Players – Local Game</h3>
+
+  <p>
+    Select <strong>2 Players</strong> to play with another person
+    using the same device.
+  </p>
+
+  <p>
+    One player uses the black stones and the other player uses
+    the white stones. Players alternate turns by selecting an
+    empty position on the board.
+  </p>
+
+  <p>
+    The match score is displayed above the board so you can keep
+    track of victories during multiple games.
+  </p>
+
+  <p>
+    In this mode, you can use the <strong>Undo</strong> button
+    to undo the last move when available, or select
+    <strong>Restart</strong> to start a new game.
+  </p>
+
+
+  <h3>🤖 Play vs AI</h3>
+
+  <p>
+    Select <strong>Play vs AI</strong> to play against the computer.
+  </p>
+
+  <p>
+    You can choose from several AI difficulty levels.
+    Lower levels are designed for easier games, while higher
+    levels provide a more difficult strategic challenge.
+  </p>
+
+  <p>
+    You can also choose who plays first. Select
+    <strong>Human</strong> if you want to make the first move,
+    or <strong>AI</strong> if you want the computer to start.
+  </p>
+
+  <p>
+    Place your stones on the board and try to connect five before
+    the AI does. The Undo option can also be used in this mode
+    when available.
+  </p>
+
+
+  <h3>🌐 Online Multiplayer</h3>
+
+  <p>
+    Online Multiplayer allows you to play Gomoku in real time
+    against another player over the internet.
+  </p>
+
+  <p>
+    To start, select <strong>Online Multiplayer</strong> from
+    the Mode menu.
+  </p>
+
+  <p>
+    Enter your player name in the <strong>Player Name</strong>
+    field and then select <strong>Find a player</strong>.
+    This makes you available in the online player area.
+  </p>
+
+  <p>
+    The <strong>Players Online</strong> section displays players
+    who are currently available. You can select another player
+    and send a game invitation.
+  </p>
+
+  <p>
+    If another player invites you, an invitation will appear.
+    You can accept the invitation to start the match or decline it.
+  </p>
+
+  <p>
+    After an invitation is accepted, both players are connected
+    to the same online match. Each move is synchronized through
+    the Gomoku Online server, allowing both players to see the
+    same board and the opponent's moves in real time.
+  </p>
+
+  <p>
+    During an online match, the status area indicates whose turn
+    it is. Wait for your turn before placing your next stone.
+  </p>
+
+  <p>
+    The <strong>Chat</strong> feature allows players to send
+    messages to each other during online gameplay.
+  </p>
+
+  <p>
+    The <strong>Public Matches</strong> area can display available
+    public matches and supported spectator options.
+  </p>
+
+  <p>
+    To leave an online match, select <strong>End Match</strong>.
+    An internet connection is required to use Online Multiplayer.
+  </p>
+
+
+  <h3>🔥 Gomoku Challenge</h3>
+
+  <p>
+    Gomoku Challenge is designed for players who want to test
+    their skills against the computer and track their progress.
+  </p>
+
+  <p>
+    Select <strong>Open Challenge</strong> to enter Challenge Mode.
+    You can choose from the available AI difficulty levels and
+    play challenge matches.
+  </p>
+
+  <p>
+    Winning challenge matches can earn points. Your results can
+    contribute to your challenge history, streak, and leaderboard
+    position.
+  </p>
+
+  <p>
+    Higher difficulty levels provide a stronger AI opponent and
+    a more difficult challenge.
+  </p>
+
+
+  <h3>🏆 Tournament Mode</h3>
+
+  <p>
+    Tournament Mode allows multiple players to participate in
+    organized Gomoku competitions.
+  </p>
+
+  <p>
+    To create a tournament, select <strong>Tournament</strong>
+    from the Mode menu, enter your player name, choose a tournament
+    name and tournament code, and select
+    <strong>Create Tournament</strong>.
+  </p>
+
+  <p>
+    The tournament code can be shared with other players.
+    Players who want to participate can enter their player name
+    and the tournament code, then select
+    <strong>Join Tournament</strong>.
+  </p>
+
+  <p>
+    The <strong>Tournament Players</strong> section displays the
+    players who have joined the tournament.
+  </p>
+
+  <p>
+    Tournament matches, standings, scores, and tournament progress
+    are displayed in the Tournament section as the competition
+    progresses.
+  </p>
+
+  <p>
+    Tournament rules can be opened directly from the
+    <strong>Tournament Rules</strong> section.
+  </p>
+
+  <p>
+    The current Tournament Mode is for Gomoku competition only.
+    It does not involve real-money wagering, gambling, or cash prizes.
+  </p>
+
+
+  <h3>💬 Chat</h3>
+
+  <p>
+    Chat is available with supported online game features.
+    Open the Chat panel, enter your message, and press the send
+    button to communicate with other participating players.
+  </p>
+
+  <p>
+    Please communicate respectfully and avoid sharing sensitive
+    personal information through the game chat.
+  </p>
+
+
+  <h3>📤 Sharing</h3>
+
+  <p>
+    Use <strong>Share Site</strong> to share Gomoku Online with
+    friends. When available during a match, you can also use the
+    match sharing feature to share information about your game.
+  </p>
+
+
+  <h3>🌐 Internet Connection</h3>
+
+  <p>
+    Local 2-Player and supported AI gameplay can be played directly
+    through the game interface.
+  </p>
+
+  <p>
+    Online Multiplayer, online player discovery, chat, tournaments,
+    leaderboards, and other online services require an active
+    internet connection.
+  </p>
+
+
+  <h3>🔒 Privacy & Terms</h3>
+
+  <p>
+    You can access the Privacy Policy and Terms of Service at any
+    time from the <strong>☰ Menu</strong> at the top of the game.
+  </p>
+
+  </div>
+
+</section>
+
         <section class="home-challenge-section">
           <h2>🔥 Gomoku Challenge</h2>
 
@@ -655,5 +851,23 @@ document.addEventListener("click", (e) => {
     }
   });
 </script>
+
+<script>
+  function toggleGameInfo() {
+    const content = document.getElementById("gameInfoContent");
+    const arrow = document.getElementById("gameInfoArrow");
+
+    if (!content) return;
+
+    const isOpen = content.style.display === "block";
+
+    content.style.display = isOpen ? "none" : "block";
+
+    if (arrow) {
+      arrow.textContent = isOpen ? "▶️" : "▼";
+    }
+  }
+</script>
+
 </body>
 </html>
