@@ -643,18 +643,57 @@ function syncPointsToServer(level = getCurrentChallengeLevel()) {
   const cleanLevel = normalizeLevel(level);
   const stats = getStatsForLevel(cleanLevel);
 
-  if (
-    challengeSocket &&
-    challengeData.playerName &&
-    challengeData.playerName.trim() &&
-    challengeData.playerName !== "Player"
-  ) {
-    challengeSocket.emit("updateChallengePoints", {
-  playerId: getChallengePlayerId(),
-  name: challengeData.playerName,
-  points: stats.points || 0,
-  level: cleanLevel
-});
+  const playerId = getChallengePlayerId();
+  const playerName = String(challengeData.playerName || "").trim();
+
+  if (!playerName || playerName === "Player") return;
+
+  // ✅ Met à jour immédiatement le leaderboard local
+  const board = Array.isArray(challengeData.leaderboards[cleanLevel])
+    ? [...challengeData.leaderboards[cleanLevel]]
+    : [];
+
+  const existingIndex = board.findIndex((player) => {
+    if (!player) return false;
+
+    if (player.playerId && player.playerId === playerId) {
+      return true;
+    }
+
+    return (
+      player.name &&
+      player.name.toLowerCase() === playerName.toLowerCase()
+    );
+  });
+
+  const updatedPlayer = {
+    playerId,
+    name: playerName,
+    points: stats.points || 0,
+    online: true,
+    level: cleanLevel
+  };
+
+  if (existingIndex >= 0) {
+    board[existingIndex] = {
+      ...board[existingIndex],
+      ...updatedPlayer
+    };
+  } else {
+    board.push(updatedPlayer);
+  }
+
+  challengeData.leaderboards[cleanLevel] = board;
+
+  saveChallengeData();
+
+  if (getSelectedLeaderboardLevel() === cleanLevel) {
+    renderLeaderboard();
+  }
+
+  // ✅ Ensuite synchronisation avec le serveur
+  if (challengeSocket) {
+    challengeSocket.emit("updateChallengePoints", updatedPlayer);
   }
 }
 
@@ -908,7 +947,7 @@ function bindChallengePageControls() {
     if (challengeSocket && name && name !== "Player") {
       challengeSocket.emit("registerChallengePlayer", {
   playerId: getChallengePlayerId(),
-  name: typedName,
+  name: name,
   level: getCurrentChallengeLevel()
 });
     }
@@ -971,7 +1010,7 @@ function bindChallengePageControls() {
       if (challengeSocket && name && name !== "Player") {
         challengeSocket.emit("registerChallengePlayer", {
   playerId: getChallengePlayerId(),
-  name: typedName,
+  name: name,
   level: getCurrentChallengeLevel()
 });
       }
@@ -1291,7 +1330,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const challengeSocket = getChallengeSocket();
 
   if (challengeSocket && playerName && playerName !== "Player") {
-    challengeSocket.emit("registerChallengePlayer", { name: playerName, level });
+    challengeSocket.emit("registerChallengePlayer", {
+  playerId: getChallengePlayerId(),
+  name: playerName,
+  level
+});
   }
 
   await syncCurrentPlayerToServer();
