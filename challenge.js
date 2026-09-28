@@ -373,11 +373,20 @@ function getAiBonus(aiLevel) {
   return 0;
 }
 
-// ✅ on ne reset PAS le joueur au refresh
 function hydratePlayerNameIntoInput() {
   if (!pagePlayerNameInput) return;
-  const storedName = getStoredChallengePlayerName();
-  pagePlayerNameInput.value = storedName !== "Player" ? storedName : "";
+
+  const onlineName = String(
+    localStorage.getItem("onlinePlayerName") || ""
+  ).trim();
+
+  const challengeName = String(
+    localStorage.getItem("challengePlayerName") || ""
+  ).trim();
+
+  const savedName = onlineName || challengeName;
+
+  pagePlayerNameInput.value = savedName;
 }
 
 function updateLocalLeaderboardName(oldName, newName) {
@@ -845,22 +854,30 @@ function handleLoss({ onlineGame = false, aiLevel = null } = {}) {
 function startChallenge() {
   const typedName = getTypedPageName();
 
-  if (!typedName) {
+  const onlineName = String(
+    localStorage.getItem("onlinePlayerName") || ""
+  ).trim();
+
+  const finalName = typedName || onlineName;
+
+  if (!finalName) {
     alert("Please enter your name first.");
-    if (pagePlayerNameInput) pagePlayerNameInput.focus();
+    if (pagePlayerNameInput) {
+      pagePlayerNameInput.focus();
+    }
     return;
   }
 
   const oldName = challengeData.playerName;
 
-  localStorage.setItem("challengePlayerName", typedName);
-  localStorage.setItem("playerName", typedName);
+  localStorage.setItem("challengePlayerName", finalName);
+  localStorage.setItem("playerName", finalName);
 
-  challengeData.playerName = typedName;
+  challengeData.playerName = finalName;
   challengeData.online = true;
   challengeData.selectedLeaderboardLevel = getCurrentChallengeLevel();
 
-  updateLocalLeaderboardName(oldName, typedName);
+  updateLocalLeaderboardName(oldName, finalName);
 
   localStorage.setItem(
     "challengeLevel",
@@ -974,7 +991,7 @@ function bindChallengePageControls() {
     if (challengeSocket && name && name !== "Player") {
       challengeSocket.emit("registerChallengePlayer", {
   playerId: getChallengePlayerId(),
-  name: name,
+  name: finalName,
   level: getCurrentChallengeLevel()
 });
     }
