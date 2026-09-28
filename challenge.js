@@ -54,6 +54,12 @@ function getChallengeSocket() {
   return typeof socket !== "undefined" ? socket : null;
 }
 
+function getExistingOnlinePlayerId() {
+  return String(
+    localStorage.getItem("onlinePlayerId") || ""
+  ).trim();
+}
+
 const defaultChallengeData = {
   browserPlayerId: getChallengePlayerId(),
   playerName: localStorage.getItem("challengePlayerName") || localStorage.getItem("playerName") || "Player",
@@ -1328,6 +1334,34 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const level = getCurrentChallengeLevel();
   const challengeSocket = getChallengeSocket();
+
+  const onlineSessionActive =
+  localStorage.getItem("onlineSessionActive") === "true";
+
+const onlinePlayerId =
+  getExistingOnlinePlayerId();
+
+const onlinePlayerName =
+  String(
+    localStorage.getItem("onlinePlayerName") || ""
+  ).trim();
+
+if (
+  challengeSocket &&
+  onlineSessionActive &&
+  onlinePlayerId &&
+  onlinePlayerName
+) {
+  challengeSocket.emit("registerOnlinePlayer", {
+    playerId: onlinePlayerId,
+    name: onlinePlayerName
+  });
+
+  console.log(
+    "✅ Online session preserved in Challenge:",
+    onlinePlayerName
+  );
+}
 
   if (challengeSocket && playerName && playerName !== "Player") {
     challengeSocket.emit("registerChallengePlayer", {
