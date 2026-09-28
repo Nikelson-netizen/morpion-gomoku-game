@@ -54,6 +54,27 @@ function getChallengeSocket() {
   return typeof socket !== "undefined" ? socket : null;
 }
 
+function waitForChallengeSocket(timeoutMs = 10000) {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+
+    const timer = setInterval(() => {
+      const challengeSocket = getChallengeSocket();
+
+      if (challengeSocket && challengeSocket.connected) {
+        clearInterval(timer);
+        resolve(challengeSocket);
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        clearInterval(timer);
+        resolve(null);
+      }
+    }, 100);
+  });
+}
+
 function getExistingOnlinePlayerId() {
   return String(
     localStorage.getItem("onlinePlayerId") || ""
@@ -1321,7 +1342,14 @@ if (isLocal || isAdmin) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  registerChallengeSocketListeners();
+  // ✅ Attendre que Socket.IO soit réellement connecté
+  const challengeSocket = await waitForChallengeSocket();
+
+  if (challengeSocket) {
+    registerChallengeSocketListeners();
+  } else {
+    console.warn("⚠️ Challenge socket not ready.");
+  }
 
   await fetchAllLeaderboardsFromServer();
 
@@ -1333,42 +1361,52 @@ document.addEventListener("DOMContentLoaded", async () => {
   ).trim();
 
   const level = getCurrentChallengeLevel();
-  const challengeSocket = getChallengeSocket();
 
-  const onlineSessionActive =
-  localStorage.getItem("onlineSessionActive") === "true";
+  /*
+   * ✅ Conserver la présence Online Multiplayer
+   *
+   * onlinePlayerId n'existe qu'après qu'un joueur
+   * soit entré dans Online Multiplayer.
+   */
+  const onlinePlayerId =
+    getExistingOnlinePlayerId();
 
-const onlinePlayerId =
-  getExistingOnlinePlayerId();
-
-const onlinePlayerName =
-  String(
-    localStorage.getItem("onlinePlayerName") || ""
+  const onlinePlayerName = String(
+    localStorage.getItem("onlinePlayerName") ||
+    localStorage.getItem("playerName") ||
+    playerName ||
+    ""
   ).trim();
 
-if (
-  challengeSocket &&
-  onlineSessionActive &&
-  onlinePlayerId &&
-  onlinePlayerName
-) {
-  challengeSocket.emit("registerOnlinePlayer", {
-    playerId: onlinePlayerId,
-    name: onlinePlayerName
-  });
-
-  console.log(
-    "✅ Online session preserved in Challenge:",
+  if (
+    challengeSocket &&
+    onlinePlayerId &&
     onlinePlayerName
-  );
-}
+  ) {
+    challengeSocket.emit("registerOnlinePlayer", {
+      playerId: onlinePlayerId,
+      name: onlinePlayerName
+    });
 
-  if (challengeSocket && playerName && playerName !== "Player") {
+    console.log(
+      "✅ Online player preserved in Challenge:",
+      onlinePlayerName
+    );
+  }
+
+  /*
+   * ✅ Enregistrement Challenge normal
+   */
+  if (
+    challengeSocket &&
+    playerName &&
+    playerName !== "Player"
+  ) {
     challengeSocket.emit("registerChallengePlayer", {
-  playerId: getChallengePlayerId(),
-  name: playerName,
-  level
-});
+      playerId: getChallengePlayerId(),
+      name: playerName,
+      level
+    });
   }
 
   await syncCurrentPlayerToServer();
@@ -1376,4 +1414,4 @@ if (
   renderProfile();
   renderLeaderboard();
   renderHistory();
-})
+});
