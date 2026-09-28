@@ -108,6 +108,30 @@ const defaultChallengeData = {
 
 let challengeData = loadChallengeData();
 
+const activeOnlineName = String(
+  localStorage.getItem("onlinePlayerName") || ""
+).trim();
+
+const activeOnlineSession =
+  localStorage.getItem("onlineSessionActive") === "true";
+
+if (activeOnlineSession && activeOnlineName) {
+  challengeData.playerName = activeOnlineName;
+  challengeData.online = true;
+
+  localStorage.setItem(
+    "challengePlayerName",
+    activeOnlineName
+  );
+
+  localStorage.setItem(
+    "playerName",
+    activeOnlineName
+  );
+
+  saveChallengeData();
+}
+
 function normalizeLevel(level) {
   const clean = String(level || "").trim();
   return VALID_LEVELS.includes(clean) ? clean : "2";
@@ -1432,3 +1456,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderLeaderboard();
   renderHistory();
 });
+
+const backToGameBtn =
+  document.getElementById("backToGameBtn");
+
+if (backToGameBtn) {
+  backToGameBtn.addEventListener("click", (event) => {
+    try {
+      const referrer = document.referrer
+        ? new URL(document.referrer)
+        : null;
+
+      const cameFromGame =
+        referrer &&
+        referrer.origin === window.location.origin &&
+        (
+          referrer.pathname.endsWith("/index.html") ||
+          referrer.pathname === "/"
+        );
+
+      if (cameFromGame) {
+        event.preventDefault();
+        window.history.back();
+      }
+    } catch (err) {
+      console.log("Back navigation fallback:", err);
+    }
+  });
+}
