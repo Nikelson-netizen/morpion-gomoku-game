@@ -97,7 +97,7 @@
           </select>
         </div>
 
-        <div class="control-group online-tool">
+        <div class="control-group online-tool ai-tool">
           <label for="playerName">Player Name</label>
           <input
             id="playerName"
@@ -124,6 +124,128 @@
           <button id="installBtn" type="button" style="display:none;">Install App</button>
         </div>
       </section>
+
+      <section id="aiChallengePanel" class="ai-tool challenge-integrated-panel">
+
+  <div class="challenge-integrated-card collapsible-box">
+  <button
+    class="collapse-toggle challenge-collapse-btn"
+    type="button"
+    data-target="challengeProfileContent"
+  >
+    <span>👤 Challenge Profile</span>
+    <span class="collapse-icon">▶️</span>
+  </button>
+
+  <div
+    id="challengeProfileContent"
+    class="collapse-content"
+    style="display:none;"
+  >
+    <div class="stats-grid">
+
+      <div class="stat-box">
+        <span class="label">Points</span>
+        <span id="playerPoints" class="value">0</span>
+      </div>
+
+      <div class="stat-box">
+        <span class="label">Level</span>
+        <span id="playerLevel" class="value">Beginner</span>
+      </div>
+
+      <div class="stat-box">
+        <span class="label">Wins</span>
+        <span id="playerWins" class="value">0</span>
+      </div>
+
+      <div class="stat-box">
+        <span class="label">Losses</span>
+        <span id="playerLosses" class="value">0</span>
+      </div>
+
+      <div class="stat-box">
+        <span class="label">Win Streak</span>
+        <span id="playerStreak" class="value">0</span>
+      </div>
+
+      <div class="stat-box">
+        <span class="label">Best Streak</span>
+        <span id="playerBestStreak" class="value">0</span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="challenge-integrated-card collapsible-box">
+  <button
+    class="collapse-toggle challenge-collapse-btn"
+    type="button"
+    data-target="challengeLeaderboardContent"
+  >
+    <span>🏆 Challenge Leaderboard</span>
+    <span class="collapse-icon">▶️</span>
+  </button>
+
+  <div
+    id="challengeLeaderboardContent"
+    class="collapse-content"
+    style="display:none;"
+  >
+    <div
+      id="leaderboardLevelTabs"
+      class="leaderboard-level-tabs"
+    ></div>
+
+    <div
+      id="leaderboardList"
+      class="leaderboard-list"
+    ></div>
+  </div>
+</div>
+
+<div class="challenge-integrated-card collapsible-box">
+  <button
+    class="collapse-toggle challenge-collapse-btn"
+    type="button"
+    data-target="challengeHistoryContent"
+  >
+    <span>🕘 Challenge History</span>
+    <span class="collapse-icon">▶️</span>
+  </button>
+
+  <div
+    id="challengeHistoryContent"
+    class="collapse-content"
+    style="display:none;"
+  >
+    <div
+      id="historyList"
+      class="history-list"
+    ></div>
+  </div>
+</div>
+
+  <div class="challenge-actions-row">
+    <button
+      id="resetChallengeDataBtn"
+      type="button"
+      class="danger-btn"
+    >
+      Reset My Stats
+    </button>
+
+    <button
+      id="shareChallengeBtn"
+      type="button"
+      class="share-btn"
+    >
+      🟢 Share Challenge
+    </button>
+  </div>
+
+</section>
 
       <section id="inviteBox" class="invite-box" style="display:none;">
         <span id="inviteText">A player wants to play with you.</span>
@@ -619,21 +741,6 @@
 
   </div>
 
-</section>
-
-        <section class="home-challenge-section">
-          <h2>🔥 Gomoku Challenge</h2>
-
-          <p>
-            Play against the AI, earn points, improve your streak,
-            climb the leaderboard, and track your challenge history.
-          </p>
-
-          <a href="challenge.html" class="challenge-link-btn">
-            Open Challenge
-          </a>
-        </section>
-
       </main>
 
     </div>
@@ -674,8 +781,9 @@
 </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-  <script src="script.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script src="script.js"></script>
+<script src="challenge.js"></script>
 
   <script>
     function updateHomeTools() {
