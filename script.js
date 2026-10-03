@@ -765,6 +765,11 @@ function showWinner(winnerName) {
 
   resetButton.textContent = "Play Again";
 
+  if (modeSelect.value === "ai") {
+  resetButton.style.display = "inline-flex";
+  movePlayAgainToBoard(resetButton);
+}
+
   const shareBtn = document.getElementById("shareMatchBtn");
 
   if (shareContainer) {
