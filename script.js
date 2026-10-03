@@ -763,7 +763,16 @@ function showWinner(winnerName) {
   status.textContent =
     `🎉 ${winnerName} wins the game! Score: ${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
 
-  resetButton.textContent = "Play Again";
+   resetButton.textContent = "Play Again";
+
+   if (modeSelect.value === "ai") {
+  const boardWrapper = document.getElementById("boardWrapper");
+
+  if (boardWrapper) {
+    boardWrapper.appendChild(resetButton);
+    resetButton.classList.add("play-again-center");
+  }
+}
 
   const shareBtn = document.getElementById("shareMatchBtn");
 
@@ -778,9 +787,44 @@ function showWinner(winnerName) {
   }
 
   if (challengeBtn) {
-  challengeBtn.style.display = "none";
+  const challengeAllowed =
+    modeSelect.value === "ai" ||
+    modeSelect.value === "pvp" ||
+    modeSelect.value === "twoPlayers";
+
+  if (!challengeAllowed || isTournamentMatchActive) {
+    challengeBtn.style.display = "none";
+  } else {
+    challengeBtn.textContent = "🔥 Challenge Me";
+    challengeBtn.style.display = "inline-flex";
+  }
+
+  const humanWonVsAI =
+    challengeAllowed &&
+    challengeSessionActive &&
+    modeSelect.value === "ai" &&
+    winnerName === getPlayerDisplayName(HUMAN_PLAYER);
+
+    if (humanWonVsAI) {
+      challengeBtn.onclick = () => {
+        const data = {
+          winnerName: getTypedPlayerName() || winnerName,
+          aiLevel: aiSelect.value,
+          aiStarted: firstPlayerSelect.value === "ai",
+          mode: modeSelect.value
+        };
+
+        localStorage.setItem("challengeResult", JSON.stringify(data));
+        window.location.href = "challenge.html";
+      };
+    } else if (challengeAllowed) {
+  challengeBtn.onclick = () => {
+    window.location.href = "challenge.html";
+  };
+} else {
   challengeBtn.onclick = null;
 }
+  }
 }
 
 function updateTurnStatus() {
@@ -1373,19 +1417,9 @@ function getShareData(limit = 10) {
 
 // ----------------- GAME FLOW -----------------
 function handleMove(i) {
-  if (modeSelect.value === "ai") {
-  const nameInput = document.getElementById("playerName");
-  const playerName = String(nameInput?.value || "").trim();
-
-  if (!playerName) {
-    status.textContent = "⚠️ Please enter your name first.";
-
-    if (nameInput) {
-      nameInput.focus();
-    }
-
-    return;
-  }
+  if (isChallengeNameMissing()) {
+  status.textContent = "⚠️ Please enter your name from Challenge Me first";
+  return;
 }
 
   if (gameOver) return;
@@ -1504,15 +1538,6 @@ function handleAIMove(i) {
 }
 
 function maybePlayAI() {
-  if (modeSelect.value === "ai") {
-    const nameInput = document.getElementById("playerName");
-    const playerName = String(nameInput?.value || "").trim();
-
-    if (!playerName) {
-      status.textContent = "⚠️ Please enter your name first.";
-      return;
-    }
-  }
   if (!worker) return;
   if (gameOver) return;
   if (modeSelect.value !== "ai") return;
@@ -1820,35 +1845,6 @@ function initSocket() {
   }
 
   socket = io();
-
-  socket.on("connect", () => {
-  const onlineSessionActive =
-    localStorage.getItem("onlineSessionActive") === "true";
-
-  const playerId =
-    localStorage.getItem("onlinePlayerId");
-
-  const name =
-    localStorage.getItem("onlinePlayerName");
-
-  if (
-    onlineSessionActive &&
-    playerId &&
-    name
-  ) {
-    socket.emit("registerOnlinePlayer", {
-      playerId,
-      name
-    });
-
-    isOnlineRegistered = true;
-
-    console.log(
-      "✅ Online player automatically reconnected:",
-      name
-    );
-  }
-});
 
   socket.on("tournamentCreated", ({ tournament }) => {
   tournamentInfo.innerHTML = `
@@ -3195,6 +3191,12 @@ hideTournamentTrophy();
 });
 firstPlayerSelect.addEventListener("change", resetGame);
 
+if (challengeBtn) {
+  challengeBtn.addEventListener("click", () => {
+  window.location.href = "challenge.html";
+});
+}
+
 if (leaveMatchButton) {
   leaveMatchButton.addEventListener("click", () => {
     if (!socket) return;
@@ -3247,22 +3249,6 @@ if (declineInviteButton) {
   });
 }
 
-function getOnlinePlayerId() {
-  let id = localStorage.getItem("onlinePlayerId");
-
-  if (!id) {
-    id =
-      "online_" +
-      Date.now() +
-      "_" +
-      Math.random().toString(36).slice(2, 10);
-
-    localStorage.setItem("onlinePlayerId", id);
-  }
-
-  return id;
-}
-
 if (goOnlineButton) {
   goOnlineButton.addEventListener("click", () => {
 
@@ -3303,13 +3289,7 @@ if (goOnlineButton) {
     myColor = null;
 
     if (!isOnlineRegistered) {
-      localStorage.setItem("onlineSessionActive", "true");
-localStorage.setItem("onlinePlayerName", name);
-
-      socket.emit("registerOnlinePlayer", {
-  playerId: getOnlinePlayerId(),
-  name
-});
+      socket.emit("registerOnlinePlayer", { name });
       isOnlineRegistered = true;
     }
 
@@ -3462,6 +3442,41 @@ async function generateShareImage(winnerName) {
   link.download = "gomoku-match.png";
   link.href = canvas.toDataURL("image/png");
   link.click();
+}
+
+const fbLoginBtn = document.getElementById("fbLoginBtn");
+
+if (fbLoginBtn) {
+  fbLoginBtn.addEventListener("click", () => {
+
+    if (typeof FB === "undefined") {
+      alert("Facebook SDK not loaded");
+      return;
+    }
+
+    FB.login(function (response) {
+      if (response.authResponse) {
+        console.log("Connected!");
+
+        FB.api('/me', { fields: 'name' }, function (user) {
+          console.log("User:", user.name);
+
+          // 🔥 Sauvegarde du nom
+          localStorage.setItem("playerName", user.name);
+
+          // 🔥 Affichage dans ton UI
+          const status = document.getElementById("status");
+          if (status) {
+            status.textContent = "Welcome " + user.name;
+          }
+        });
+
+      } else {
+        console.log("Login cancelled");
+      }
+    }, { scope: 'public_profile' }); // ✅ IMPORTANT (pas email)
+
+  });
 }
 
 let deferredPrompt = null;
