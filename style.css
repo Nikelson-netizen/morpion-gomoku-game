@@ -1953,3 +1953,51 @@ body.mode-tournament #tournamentTurnTimer {
   flex: 1;
   max-width: 240px;
 }
+
+[23:56, 10/2/2026] Kelly: <div id="playAgainOverlay" class="play-again-overlay" hidden>
+  <button id="centerPlayAgainBtn" type="button">
+    ▶️ Play Again
+  </button>
+</div>
+[23:59, 10/2/2026] Kelly: /* ===== PLAY AGAIN AU CENTRE DE LA GRILLE ===== */
+
+#boardWrapper {
+  position: relative;
+}
+
+.play-again-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.play-again-overlay[hidden] {
+  display: none !important;
+}
+
+#centerPlayAgainBtn {
+  pointer-events: auto;
+
+  background: #e53935;
+  color: white;
+
+  border: none;
+  border-radius: 12px;
+
+  padding: 14px 26px;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+#centerPlayAgainBtn:hover {
+  background: #c62828;
+}
