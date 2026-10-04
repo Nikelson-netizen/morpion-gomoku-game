@@ -2839,6 +2839,7 @@ if (
   goOnlineButton.textContent = "▶️ Play Again";
   goOnlineButton.dataset.action = "playAgain";
   goOnlineButton.classList.add("play-again");
+  movePlayAgainToBoard(goOnlineButton);
 }
 });
 
@@ -2852,6 +2853,8 @@ if (
   matchScore: serverMatchScore,
   isTournamentMatch
 }) => {
+
+  restorePlayAgainButtons();
 
   if (isTournamentMatch) {
     stopTournamentCountdown(true);
