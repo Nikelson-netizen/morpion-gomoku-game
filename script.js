@@ -84,6 +84,56 @@ if (playerNameInput) {
 }
 
 const goOnlineButton = document.getElementById("goOnline");
+// Position originale des boutons
+const resetButtonHome = {
+  parent: resetButton?.parentElement || null,
+  next: resetButton?.nextElementSibling || null
+};
+
+const goOnlineButtonHome = {
+  parent: goOnlineButton?.parentElement || null,
+  next: goOnlineButton?.nextElementSibling || null
+};
+
+function movePlayAgainToBoard(button) {
+  const boardWrapper =
+    document.getElementById("boardWrapper");
+
+  if (!button || !boardWrapper) return;
+
+  boardWrapper.appendChild(button);
+  button.classList.add("play-again-center");
+}
+
+function restoreButtonPosition(button, home) {
+  if (!button || !home?.parent) return;
+
+  button.classList.remove("play-again-center");
+
+  if (
+    home.next &&
+    home.next.parentElement === home.parent
+  ) {
+    home.parent.insertBefore(
+      button,
+      home.next
+    );
+  } else {
+    home.parent.appendChild(button);
+  }
+}
+
+function restorePlayAgainButtons() {
+  restoreButtonPosition(
+    resetButton,
+    resetButtonHome
+  );
+
+  restoreButtonPosition(
+    goOnlineButton,
+    goOnlineButtonHome
+  );
+}
 const onlineInfo = document.getElementById("onlineInfo");
 const onlinePlayersBox = document.getElementById("onlinePlayers");
 const publicMatchesBox = document.getElementById("publicMatches");
@@ -3012,6 +3062,8 @@ function undoLastLocalMove(numberOfMoves = 1) {
 
 // ----------------- RESET -----------------
 function resetGame() {
+
+  restorePlayAgainButtons();
 
   stopTournamentCountdown(true);
 
