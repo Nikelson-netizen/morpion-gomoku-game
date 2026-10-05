@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Télécharger Gomoku Online</title>
+</head>
+<body>
+
+<p>Redirection vers le téléchargement...</p>
+
+<script>
+const ua = navigator.userAgent || navigator.vendor;
+
+if (/android/i.test(ua)) {
+  window.location.href =
+    "https://play.google.com/store/apps/details?id=com.nikelson.gomokuonline";
+
+} else if (/iPad|iPhone|iPod/.test(ua)) {
+  window.location.href =
+    "https://apps.apple.com/ca/app/gomoku-online-five-in-a-row/id6813991674";
+
+} else {
+  window.location.href =
+    "https://gomoku-morpion-5-online.onrender.com/";
+}
+</script>
+
+</body>
+</html>
