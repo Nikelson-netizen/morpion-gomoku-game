@@ -1304,20 +1304,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const level = getCurrentChallengeLevel();
   const challengeSocket = getChallengeSocket();
 
-  const onlinePlayerId = getExistingOnlinePlayerId();
-
-if (
-  challengeSocket &&
-  onlinePlayerId &&
-  playerName &&
-  playerName !== "Player"
-) {
-  challengeSocket.emit("registerOnlinePlayer", {
-    playerId: onlinePlayerId,
-    name: playerName
-  });
-}
-
   if (challengeSocket && playerName && playerName !== "Player") {
     challengeSocket.emit("registerChallengePlayer", {
   playerId: getChallengePlayerId(),
