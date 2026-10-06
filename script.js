@@ -1887,10 +1887,12 @@ function initSocket() {
     localStorage.getItem("onlinePlayerName");
 
   if (
-    onlineSessionActive &&
-    playerId &&
-    name
-  ) {
+  modeSelect &&
+  modeSelect.value === "online" &&
+  onlineSessionActive &&
+  playerId &&
+  name
+) {
     socket.emit("registerOnlinePlayer", {
       playerId,
       name
