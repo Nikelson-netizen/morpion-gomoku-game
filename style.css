@@ -2010,3 +2010,121 @@ body.mode-tournament #tournamentTurnTimer {
   transform: scale(1.05);
   box-shadow: 0 0 14px rgba(229, 57, 53, 0.55);
 }
+
+/* =====================================
+   CHALLENGE - NOUVELLE BARRE COMPACTE
+===================================== */
+
+body.mode-ai #aiChallengePanel {
+  display: block !important;
+}
+
+#aiChallengePanel {
+  width: 100%;
+  max-width: 760px;
+  margin: 10px auto 14px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+/* Ligne des 5 icônes */
+.challenge-toolbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.challenge-toolbar-left,
+.challenge-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Petits boutons */
+#aiChallengePanel .challenge-icon-btn {
+  width: 48px !important;
+  height: 48px !important;
+
+  min-width: 48px !important;
+  min-height: 48px !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: #222 !important;
+
+  border: none !important;
+  border-radius: 14px !important;
+
+  font-size: 23px !important;
+  line-height: 1 !important;
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.13) !important;
+
+  cursor: pointer;
+}
+
+/* Reset */
+#aiChallengePanel .reset-icon-btn {
+  background: #eeeeee !important;
+}
+
+/* Share */
+#aiChallengePanel .share-icon-btn {
+  background: #22c55e !important;
+  color: white !important;
+}
+
+/* Contenu qui s'ouvre sous les icônes */
+.challenge-mini-content {
+  width: 100%;
+  margin-top: 10px;
+  padding: 14px;
+
+  background: rgba(255,255,255,0.94);
+  border-radius: 16px;
+
+  box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+}
+
+.challenge-mini-content h3 {
+  margin: 0 0 14px;
+  text-align: center;
+}
+
+/* Mobile */
+@media (max-width: 520px) {
+
+  #aiChallengePanel {
+    padding: 0 4px;
+    margin-top: 8px;
+  }
+
+  .challenge-toolbar {
+    gap: 5px;
+  }
+
+  .challenge-toolbar-left,
+  .challenge-toolbar-right {
+    gap: 5px;
+  }
+
+  #aiChallengePanel .challenge-icon-btn {
+    width: 44px !important;
+    height: 44px !important;
+
+    min-width: 44px !important;
+    min-height: 44px !important;
+
+    font-size: 21px !important;
+    border-radius: 12px !important;
+  }
+}

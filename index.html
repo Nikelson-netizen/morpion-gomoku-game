@@ -127,21 +127,76 @@
 
       <section id="aiChallengePanel" class="ai-tool challenge-integrated-panel">
 
-  <div class="challenge-integrated-card collapsible-box">
+  <div class="challenge-toolbar">
+
+    <div class="challenge-toolbar-left">
+
   <button
-    class="collapse-toggle challenge-collapse-btn"
+    class="challenge-icon-btn challenge-panel-toggle"
     type="button"
     data-target="challengeProfileContent"
+    title="Challenge Profile"
+    aria-label="Challenge Profile"
   >
-    <span>👤 Challenge Profile</span>
-    <span class="collapse-icon">▶️</span>
+    👤
   </button>
+
+  <button
+    class="challenge-icon-btn challenge-panel-toggle"
+    type="button"
+    data-target="challengeLeaderboardContent"
+    title="Challenge Leaderboard"
+    aria-label="Challenge Leaderboard"
+  >
+    🏆
+  </button>
+
+  <button
+    class="challenge-icon-btn challenge-panel-toggle"
+    type="button"
+    data-target="challengeHistoryContent"
+    title="Challenge History"
+    aria-label="Challenge History"
+  >
+    🕘
+  </button>
+
+</div>
+
+    <div class="challenge-toolbar-right">
+
+      <button
+        id="resetChallengeDataBtn"
+        type="button"
+        class="challenge-icon-btn reset-icon-btn"
+        title="Reset My Stats"
+        aria-label="Reset My Stats"
+      >
+        ♻️
+      </button>
+
+      <button
+        id="shareChallengeBtn"
+        type="button"
+        class="challenge-icon-btn share-icon-btn"
+        title="Share Challenge"
+        aria-label="Share Challenge"
+      >
+        📤
+      </button>
+
+    </div>
+
+  </div>
+
 
   <div
     id="challengeProfileContent"
-    class="collapse-content"
+    class="challenge-mini-content"
     style="display:none;"
   >
+    <h3>👤 Challenge Profile</h3>
+
     <div class="stats-grid">
 
       <div class="stat-box">
@@ -176,23 +231,15 @@
 
     </div>
   </div>
-</div>
 
-<div class="challenge-integrated-card collapsible-box">
-  <button
-    class="collapse-toggle challenge-collapse-btn"
-    type="button"
-    data-target="challengeLeaderboardContent"
-  >
-    <span>🏆 Challenge Leaderboard</span>
-    <span class="collapse-icon">▶️</span>
-  </button>
 
   <div
     id="challengeLeaderboardContent"
-    class="collapse-content"
+    class="challenge-mini-content"
     style="display:none;"
   >
+    <h3>🏆 Challenge Leaderboard</h3>
+
     <div
       id="leaderboardLevelTabs"
       class="leaderboard-level-tabs"
@@ -203,46 +250,19 @@
       class="leaderboard-list"
     ></div>
   </div>
-</div>
 
-<div class="challenge-integrated-card collapsible-box">
-  <button
-    class="collapse-toggle challenge-collapse-btn"
-    type="button"
-    data-target="challengeHistoryContent"
-  >
-    <span>🕘 Challenge History</span>
-    <span class="collapse-icon">▶️</span>
-  </button>
 
   <div
     id="challengeHistoryContent"
-    class="collapse-content"
+    class="challenge-mini-content"
     style="display:none;"
   >
+    <h3>🕘 Challenge History</h3>
+
     <div
       id="historyList"
       class="history-list"
     ></div>
-  </div>
-</div>
-
-  <div class="challenge-actions-row">
-    <button
-      id="resetChallengeDataBtn"
-      type="button"
-      class="danger-btn"
-    >
-      Reset My Stats
-    </button>
-
-    <button
-      id="shareChallengeBtn"
-      type="button"
-      class="share-btn"
-    >
-      🟢 Share Challenge
-    </button>
   </div>
 
 </section>
@@ -974,6 +994,49 @@ document.addEventListener("click", (e) => {
       arrow.textContent = isOpen ? "▶️" : "▼";
     }
   }
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const challengeButtons =
+    document.querySelectorAll(
+      "#aiChallengePanel .challenge-panel-toggle"
+    );
+
+  const challengeContents =
+    document.querySelectorAll(
+      "#aiChallengePanel .challenge-mini-content"
+    );
+
+  challengeButtons.forEach((button) => {
+
+    button.addEventListener("click", () => {
+
+      const targetId = button.dataset.target;
+      const target =
+        document.getElementById(targetId);
+
+      if (!target) return;
+
+      const wasOpen =
+        target.style.display === "block";
+
+      // Fermer tous les panneaux Challenge
+      challengeContents.forEach((content) => {
+        content.style.display = "none";
+      });
+
+      // Si celui-ci était fermé, on l'ouvre
+      if (!wasOpen) {
+        target.style.display = "block";
+      }
+
+    });
+
+  });
+
+});
 </script>
 
 </body>
