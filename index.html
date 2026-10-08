@@ -999,41 +999,65 @@ document.addEventListener("click", (e) => {
 <script>
 document.addEventListener("DOMContentLoaded", () => {
 
+  const panel = document.getElementById("aiChallengePanel");
+
+  if (!panel) return;
+
   const challengeButtons =
-    document.querySelectorAll(
-      "#aiChallengePanel .challenge-panel-toggle"
-    );
+    panel.querySelectorAll(".challenge-panel-toggle");
 
   const challengeContents =
-    document.querySelectorAll(
-      "#aiChallengePanel .challenge-mini-content"
-    );
+    panel.querySelectorAll(".challenge-mini-content");
+
+  function closeAllChallengePanels() {
+    challengeContents.forEach((content) => {
+      content.style.display = "none";
+    });
+  }
 
   challengeButtons.forEach((button) => {
 
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
 
       const targetId = button.dataset.target;
-      const target =
-        document.getElementById(targetId);
+      const target = document.getElementById(targetId);
 
       if (!target) return;
 
-      const wasOpen =
-        target.style.display === "block";
+      const wasOpen = target.style.display === "block";
 
-      // Fermer tous les panneaux Challenge
-      challengeContents.forEach((content) => {
-        content.style.display = "none";
-      });
+      closeAllChallengePanels();
 
-      // Si celui-ci était fermé, on l'ouvre
       if (!wasOpen) {
         target.style.display = "block";
       }
-
     });
 
+  });
+
+  challengeContents.forEach((content) => {
+
+    /* Permet d'utiliser les boutons à l'intérieur
+       sans fermer automatiquement le panneau */
+    content.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    /* Cliquer sur le titre ferme le panneau */
+    const title = content.querySelector("h3");
+
+    if (title) {
+      title.addEventListener("click", (event) => {
+        event.stopPropagation();
+        content.style.display = "none";
+      });
+    }
+  });
+
+  /* Cliquer ailleurs dans la page ferme tout */
+  document.addEventListener("click", () => {
+    closeAllChallengePanels();
   });
 
 });
