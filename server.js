@@ -4,6 +4,32 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
+/* =========================
+   POSTGRESQL DATABASE
+========================= */
+
+const { Pool } = require("pg");
+
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 5,
+      connectionTimeoutMillis: 10000
+    })
+  : null;
+
+if (pool) {
+  pool.query("SELECT 1")
+    .then(() => {
+      console.log("✅ PostgreSQL connected successfully");
+    })
+    .catch((err) => {
+      console.error("❌ PostgreSQL connection error:", err.message);
+    });
+} else {
+  console.log("DATABASE_URL not configured");
+}
+
 const app = express();
 const server = http.createServer(app);
 
