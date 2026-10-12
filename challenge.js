@@ -57,6 +57,146 @@ function getChallengePlayerId() {
   return id;
 }
 
+/* =========================
+   GOMOKU GUEST SESSION
+========================= */
+
+async function initializeGomokuGuestSession() {
+  try {
+    const response = await fetch("/api/guest/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({})
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Guest session error: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.guestId) {
+      throw new Error("Invalid guest session");
+    }
+
+    window.gomokuGuestId = data.guestId;
+
+    console.log("✅ Gomoku Guest session active");
+
+    return data.guestId;
+
+  } catch (error) {
+    console.warn(
+      "Guest session unavailable:",
+      error.message
+    );
+
+    return null;
+  }
+}
+
+/* =========================
+   LOAD GUEST CHALLENGE STATS
+========================= */
+
+async function loadGuestChallengeStats() {
+  try {
+    const response = await fetch(
+      "/api/guest/challenge-stats",
+      {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store"
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(
+        "Guest stats unavailable:",
+        response.status
+      );
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !Array.isArray(data.stats)) {
+      return null;
+    }
+
+    console.log(
+      "✅ Guest Challenge stats loaded:",
+      data.stats
+    );
+
+    // Restaurer les statistiques PostgreSQL
+// sans écraser les anciennes données locales.
+
+for (const row of data.stats) {
+  const level = String(row.level);
+
+  if (!VALID_LEVELS.includes(level)) {
+    continue;
+  }
+
+  // Protéger les points locaux non synchronisés
+const hasPendingSave =
+  localStorage.getItem(
+    `gomokuChallengePending_${level}`
+  ) === "1";
+
+if (hasPendingSave) {
+  console.warn(
+    "⏳ Guest Challenge sauvegarde en attente:",
+    level
+  );
+
+  continue;
+}
+
+  challengeData.levelStats[level] = {
+    points: Number(row.points) || 0,
+    wins: Number(row.wins) || 0,
+    losses: Number(row.losses) || 0,
+    streak: Number(row.streak) || 0,
+    bestStreak: Number(row.best_streak) || 0,
+    revision: Number(row.revision) || 0
+  };
+
+  // Mémoriser la dernière version PostgreSQL
+// sans écraser une sauvegarde locale en attente.
+if (
+  localStorage.getItem(
+    `gomokuChallengePending_${level}`
+  ) !== "1"
+) {
+  localStorage.setItem(
+    `gomokuChallengeSynced_${level}`,
+    JSON.stringify(row)
+  );
+}
+}
+
+saveChallengeData();
+renderProfile();
+
+return data.stats;
+
+  } catch (error) {
+    console.error(
+      "Guest Challenge load error:",
+      error.message
+    );
+
+    return null;
+  }
+}
+
 function getExistingOnlinePlayerId() {
   return String(
     localStorage.getItem("onlinePlayerId") || ""
@@ -150,12 +290,15 @@ function ensureLevelStatsShape(data) {
   VALID_LEVELS.forEach((level) => {
     const stat = next.levelStats[level] || {};
     next.levelStats[level] = {
-      points: Number.isFinite(stat.points) ? stat.points : 0,
-      wins: Number.isFinite(stat.wins) ? stat.wins : 0,
-      losses: Number.isFinite(stat.losses) ? stat.losses : 0,
-      streak: Number.isFinite(stat.streak) ? stat.streak : 0,
-      bestStreak: Number.isFinite(stat.bestStreak) ? stat.bestStreak : 0
-    };
+  points: Number.isFinite(stat.points) ? stat.points : 0,
+  wins: Number.isFinite(stat.wins) ? stat.wins : 0,
+  losses: Number.isFinite(stat.losses) ? stat.losses : 0,
+  streak: Number.isFinite(stat.streak) ? stat.streak : 0,
+  bestStreak: Number.isFinite(stat.bestStreak) ? stat.bestStreak : 0,
+  revision: Number.isSafeInteger(stat.revision) && stat.revision >= 0
+    ? stat.revision
+    : 0
+};
   });
 
   return next;
@@ -257,6 +400,313 @@ function saveChallengeData() {
   challengeData = normalizeChallengeData(challengeData);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(challengeData));
 }
+
+const guestChallengeSavingLevels = new Set();
+const guestChallengeSaveAgain = new Set();
+
+function getLastSyncedGuestStats(level) {
+  const cleanLevel = normalizeLevel(level);
+
+  const raw = localStorage.getItem(
+    `gomokuChallengeSynced_${cleanLevel}`
+  );
+
+  if (!raw) return null;
+
+  try {
+    const saved = JSON.parse(raw);
+
+    if (!saved || typeof saved !== "object") {
+      return null;
+    }
+
+    const revision = Number(saved.revision);
+
+    if (
+      !Number.isSafeInteger(revision) ||
+      revision < 0
+    ) {
+      return null;
+    }
+
+    return {
+      points: Number(saved.points) || 0,
+      wins: Number(saved.wins) || 0,
+      losses: Number(saved.losses) || 0,
+      streak: Number(saved.streak) || 0,
+      bestStreak:
+        Number(
+          saved.best_streak ?? saved.bestStreak
+        ) || 0,
+      revision
+    };
+
+  } catch (error) {
+    console.warn(
+      "Unable to read synced Challenge stats:",
+      error.message
+    );
+
+    return null;
+  }
+  
+}
+
+// Calculer les changements depuis
+// la dernière sauvegarde PostgreSQL.
+function getGuestChallengeUnsyncedChanges(level) {
+  const cleanLevel = normalizeLevel(level);
+
+  const syncedStats =
+    getLastSyncedGuestStats(cleanLevel);
+
+  if (!syncedStats) {
+    return null;
+  }
+
+  const localStats =
+    getStatsForLevel(cleanLevel);
+
+  return {
+    level: cleanLevel,
+
+    baseRevision: syncedStats.revision,
+
+    pointsDifference:
+      localStats.points - syncedStats.points,
+
+    winsDifference:
+      localStats.wins - syncedStats.wins,
+
+    lossesDifference:
+      localStats.losses - syncedStats.losses,
+
+    localStreak: localStats.streak,
+
+    localBestStreak: localStats.bestStreak
+  };
+}
+
+function inspectGuestChallengeConflict(level, serverStats) {
+  const cleanLevel = normalizeLevel(level);
+
+  const synced =
+    getLastSyncedGuestStats(cleanLevel);
+
+  const changes =
+    getGuestChallengeUnsyncedChanges(cleanLevel);
+
+  if (!synced || !changes || !serverStats) {
+    return null;
+  }
+
+  const serverWinsDifference =
+    Number(serverStats.wins) - synced.wins;
+
+  const serverLossesDifference =
+    Number(serverStats.losses) - synced.losses;
+
+  const differences = [
+    serverWinsDifference,
+    serverLossesDifference,
+    changes.winsDifference,
+    changes.lossesDifference
+  ];
+
+  if (
+    !differences.every(
+      value => Number.isSafeInteger(value) && value >= 0
+    )
+  ) {
+    return null;
+  }
+
+  const serverGames =
+    serverWinsDifference + serverLossesDifference;
+
+  const localGames =
+    changes.winsDifference + changes.lossesDifference;
+
+  return {
+    level: cleanLevel,
+    serverGames,
+    localGames,
+    concurrentChanges:
+      serverGames > 0 && localGames > 0
+  };
+}
+
+async function saveGuestChallengeStats(level) {
+  const cleanLevel = normalizeLevel(level);
+
+  localStorage.setItem(
+    `gomokuChallengePending_${cleanLevel}`,
+    "1"
+  );
+
+  if (guestChallengeSavingLevels.has(cleanLevel)) {
+    guestChallengeSaveAgain.add(cleanLevel);
+    return;
+  }
+
+  guestChallengeSavingLevels.add(cleanLevel);
+
+  try {
+    const guestReady = window.gomokuGuestSessionReady;
+
+    if (!guestReady) return;
+
+    const guestId = await guestReady;
+
+    if (!guestId) return;
+
+    const stats = getStatsForLevel(cleanLevel);
+
+    const response = await fetch(
+      "/api/guest/challenge-stats",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: getStoredChallengePlayerName(),
+          level: Number(cleanLevel),
+          revision: Number(stats.revision) || 0,
+          points: stats.points,
+          wins: stats.wins,
+          losses: stats.losses,
+          streak: stats.streak,
+          bestStreak: stats.bestStreak
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (response.status === 409) {
+  // Garder les statistiques PostgreSQL
+  // pour résoudre le conflit ensuite.
+  if (result.serverStats) {
+    localStorage.setItem(
+      `gomokuChallengeConflict_${cleanLevel}`,
+      JSON.stringify(result.serverStats)
+    );
+  }
+
+  console.warn(
+    "⚠️ Conflit PostgreSQL : statistiques locales conservées.",
+    result.serverStats
+  );
+
+  const conflictInfo =
+  inspectGuestChallengeConflict(
+    cleanLevel,
+    result.serverStats
+  );
+
+if (conflictInfo?.concurrentChanges) {
+  console.warn(
+    "⚠️ Modifications simultanées détectées.",
+    conflictInfo
+  );
+}
+
+  return;
+}
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message || "Unable to save Guest stats"
+      );
+    }
+
+    // Conserver la dernière version réellement
+// enregistrée dans PostgreSQL.
+if (result.stats) {
+  localStorage.setItem(
+    `gomokuChallengeSynced_${cleanLevel}`,
+    JSON.stringify(result.stats)
+  );
+}
+
+    // Conserver la nouvelle révision PostgreSQL
+const serverRevision = Number(result.stats?.revision);
+
+if (
+  Number.isSafeInteger(serverRevision) &&
+  serverRevision >= 0
+) {
+  const currentStats = getStatsForLevel(cleanLevel);
+
+  currentStats.revision = Math.max(
+    Number(currentStats.revision) || 0,
+    serverRevision
+  );
+
+  saveChallengeData();
+}
+
+// Ne pas effacer l'indicateur si une
+// nouvelle sauvegarde est en attente.
+if (!guestChallengeSaveAgain.has(cleanLevel)) {
+  localStorage.removeItem(
+    `gomokuChallengePending_${cleanLevel}`
+  );
+}
+
+console.log(
+  "✅ Guest Challenge stats saved:",
+  cleanLevel
+);
+
+  } catch (error) {
+
+  // Signaler une sauvegarde non terminée
+  localStorage.setItem(
+    `gomokuChallengePending_${normalizeLevel(level)}`,
+    "1"
+  );
+
+  console.error(
+    "❌ Guest Challenge save error:",
+    error.message
+  );
+} finally {
+    guestChallengeSavingLevels.delete(cleanLevel);
+
+    if (guestChallengeSaveAgain.has(cleanLevel)) {
+      guestChallengeSaveAgain.delete(cleanLevel);
+      saveGuestChallengeStats(cleanLevel);
+    }
+  }
+}
+
+async function retryPendingGuestChallengeSaves() {
+  for (const level of VALID_LEVELS) {
+    const pending = localStorage.getItem(
+      `gomokuChallengePending_${level}`
+    );
+
+    if (pending === "1") {
+      console.log(
+        "🔄 Retry Guest Challenge save:",
+        level
+      );
+
+      await saveGuestChallengeStats(level);
+    }
+  }
+}
+
+// Réessayer les sauvegardes lorsque
+// la connexion Internet revient.
+window.addEventListener("online", async () => {
+  console.log("🌐 Internet connection restored");
+
+  await retryPendingGuestChallengeSaves();
+});
 
 function getStoredChallengePlayerName() {
   const name = localStorage.getItem("challengePlayerName") || challengeData.playerName;
@@ -556,6 +1006,19 @@ function registerChallengeSocketListeners() {
     const cleanLevel = normalizeLevel(level);
     if (!Array.isArray(leaderboard)) return;
 
+// Ne pas effacer le classement local
+// lorsque le serveur envoie une liste vide.
+if (
+  leaderboard.length === 0 &&
+  Array.isArray(challengeData.leaderboards[cleanLevel]) &&
+  challengeData.leaderboards[cleanLevel].length > 0
+) {
+  console.log(
+    `Level ${cleanLevel}: local leaderboard preserved`
+  );
+  return;
+}
+
     challengeData.leaderboards[cleanLevel] = leaderboard.map((player) => ({
       name: player.name,
       points: player.points,
@@ -599,16 +1062,31 @@ async function fetchAllLeaderboardsFromServer() {
     if (!data.success || !data.leaderboards) return;
 
     VALID_LEVELS.forEach((level) => {
-      challengeData.leaderboards[level] = Array.isArray(data.leaderboards[level])
-  ? data.leaderboards[level].map((player) => ({
+
+  const serverBoard = data.leaderboards[level];
+
+  // Ne pas effacer les anciens classements locaux
+  // si le serveur retourne une liste vide.
+  if (
+    !Array.isArray(serverBoard) ||
+    serverBoard.length === 0
+  ) {
+    console.log(
+      `Level ${level}: keeping local leaderboard`
+    );
+    return;
+  }
+
+  challengeData.leaderboards[level] =
+    serverBoard.map((player) => ({
       playerId: player.playerId,
       name: player.name,
       points: player.points,
       online: !!player.online,
       level
-    }))
-  : [];
-    });
+    }));
+
+});
 
     saveChallengeData();
     renderLeaderboard();
@@ -727,8 +1205,12 @@ function applyLastChallengeResult() {
     }
 
     localStorage.removeItem("challengeResult");
-    saveChallengeData();
-    syncPointsToServer(resultLevel);
+saveChallengeData();
+
+// Sauvegarder les nouveaux points dans PostgreSQL
+saveGuestChallengeStats(resultLevel);
+
+syncPointsToServer(resultLevel);
   } catch (err) {
     console.error("Error reading challengeResult:", err);
     localStorage.removeItem("challengeResult");
@@ -762,6 +1244,7 @@ function handleWin({ aiStarted = false, onlineGame = false, fastWin = false, aiL
 
   renderAll();
   syncPointsToServer(level);
+  saveGuestChallengeStats(level);
 }
 
 function handleLoss({ onlineGame = false, aiLevel = null } = {}) {
@@ -787,6 +1270,7 @@ function handleLoss({ onlineGame = false, aiLevel = null } = {}) {
 
   renderAll();
   syncPointsToServer(level);
+  saveGuestChallengeStats(level);
 }
 
 function startChallenge() {
@@ -1072,8 +1556,11 @@ if (resetChallengeDataBtn) {
     );
 
     saveChallengeData();
-    renderAll();
-    resetRoundSyncFlag();
+renderAll();
+resetRoundSyncFlag();
+
+// Enregistrer également la remise à zéro dans PostgreSQL
+await saveGuestChallengeStats(currentLevel);
 
     try {
       await fetch("/api/challenge/leaderboard/upsert", {
@@ -1255,7 +1742,6 @@ window.renderLeaderboardChallenge = renderLeaderboard;
 window.renderHistoryChallenge = renderHistory;
 
 bindChallengePageControls();
-applyLastChallengeResult();
 
 const urlParams = getChallengeParamsFromURL();
 
@@ -1290,9 +1776,25 @@ if (isLocal || isAdmin) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  registerChallengeSocketListeners();
+
+  // ✅ Initialiser une seule fois la session Guest
+  window.gomokuGuestSessionReady =
+    initializeGomokuGuestSession();
+
+  await window.gomokuGuestSessionReady;
+
+// Charger les anciennes statistiques PostgreSQL
+await loadGuestChallengeStats();
+
+// Appliquer le résultat de la dernière partie
+// après la récupération des anciens points
+applyLastChallengeResult();
+
+// Conserver les fonctions Challenge
+registerChallengeSocketListeners();
 
   await fetchAllLeaderboardsFromServer();
+  await retryPendingGuestChallengeSaves();
 
   const playerName = (
     challengeData.playerName ||

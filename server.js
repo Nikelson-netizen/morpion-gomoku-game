@@ -30,11 +30,444 @@ if (pool) {
   console.log("DATABASE_URL not configured");
 }
 
+/* =========================
+   GOMOKU GUEST DATABASE
+========================= */
+
+async function initializeGuestDatabase() {
+  if (!pool) {
+    console.log("Guest database unavailable");
+    return;
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS guest_players (
+        id UUID PRIMARY KEY,
+        token_hash CHAR(64) UNIQUE NOT NULL,
+        display_name VARCHAR(20) NOT NULL DEFAULT 'Guest',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+  CREATE TABLE IF NOT EXISTS guest_challenge_stats (
+    guest_id UUID NOT NULL
+      REFERENCES guest_players(id) ON DELETE CASCADE,
+
+    level INTEGER NOT NULL
+      CHECK (level IN (2, 3, 4, 5)),
+
+    points INTEGER NOT NULL DEFAULT 0,
+    wins INTEGER NOT NULL DEFAULT 0,
+    losses INTEGER NOT NULL DEFAULT 0,
+    streak INTEGER NOT NULL DEFAULT 0,
+    best_streak INTEGER NOT NULL DEFAULT 0,
+git remote -v
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (guest_id, level)
+  )
+`);
+
+// Préparer la protection contre
+// les anciennes sauvegardes
+
+await pool.query(`
+  ALTER TABLE guest_challenge_stats
+  ADD COLUMN IF NOT EXISTS revision
+  INTEGER NOT NULL DEFAULT 0
+`);
+
+console.log("✅ Guest Challenge stats table ready");
+
+    console.log("✅ Guest players table ready");
+
+  } catch (error) {
+    console.error(
+      "❌ Guest database initialization error:",
+      error.message
+    );
+  }
+}
+
+initializeGuestDatabase();
+
 const app = express();
 const server = http.createServer(app);
 
 app.use(express.json());
 const nodemailer = require("nodemailer");
+
+/* =========================
+   GOMOKU GUEST SESSION
+========================= */
+
+const guestCrypto = require("node:crypto");
+
+app.post("/api/guest/session", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
+  if (!pool) {
+    return res.status(503).json({
+      success: false,
+      message: "Database unavailable"
+    });
+  }
+
+  try {
+    const suppliedToken = (req.headers.cookie || "")
+  .split(";")
+  .map((item) => item.trim())
+  .find((item) => item.startsWith("gomoku_guest="))
+  ?.slice("gomoku_guest=".length);
+
+    // Retrouver un invité existant
+    if (suppliedToken !== undefined && suppliedToken !== null) {
+      if (
+        typeof suppliedToken !== "string" ||
+        !/^[a-f0-9]{64}$/.test(suppliedToken)
+      ) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid guest token"
+        });
+      }
+
+      const tokenHash = guestCrypto
+        .createHash("sha256")
+        .update(suppliedToken)
+        .digest("hex");
+
+      const result = await pool.query(
+        `SELECT id, display_name
+         FROM guest_players
+         WHERE token_hash = $1`,
+        [tokenHash]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(401).json({
+          success: false,
+          message: "Guest session not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        guestId: result.rows[0].id,
+        playerName: result.rows[0].display_name
+      });
+    }
+
+    // Créer un nouvel invité
+    const guestToken = guestCrypto
+      .randomBytes(32)
+      .toString("hex");
+
+    const tokenHash = guestCrypto
+      .createHash("sha256")
+      .update(guestToken)
+      .digest("hex");
+
+    const guestId = guestCrypto.randomUUID();
+
+    await pool.query(
+      `INSERT INTO guest_players
+       (id, token_hash, display_name)
+       VALUES ($1, $2, $3)`,
+      [guestId, tokenHash, "Guest"]
+    );
+
+    res.cookie("gomoku_guest", guestToken, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: 365 * 24 * 60 * 60 * 1000
+});
+
+return res.status(201).json({
+  success: true,
+  guestId,
+  playerName: "Guest"
+});
+
+  } catch (error) {
+    console.error("Guest session error:", error.message);
+
+    return res.status(503).json({
+      success: false,
+      message: "Guest service temporarily unavailable"
+    });
+  }
+});
+
+/* =========================
+   GET GUEST CHALLENGE STATS
+========================= */
+
+app.get("/api/guest/challenge-stats", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
+  if (!pool) {
+    return res.status(503).json({
+      success: false,
+      message: "Database unavailable"
+    });
+  }
+
+  try {
+    const guestToken = (req.headers.cookie || "")
+      .split(";")
+      .map(item => item.trim())
+      .find(item => item.startsWith("gomoku_guest="))
+      ?.slice("gomoku_guest=".length);
+
+    if (!guestToken || !/^[a-f0-9]{64}$/.test(guestToken)) {
+      return res.status(401).json({
+        success: false,
+        message: "Guest session required"
+      });
+    }
+
+    const tokenHash = guestCrypto
+      .createHash("sha256")
+      .update(guestToken)
+      .digest("hex");
+
+    const result = await pool.query(`
+      SELECT
+        s.level,
+        s.points,
+        s.wins,
+        s.losses,
+        s.streak,
+        s.best_streak,
+        s.revision
+      FROM guest_players p
+      LEFT JOIN guest_challenge_stats s
+        ON s.guest_id = p.id
+      WHERE p.token_hash = $1
+      ORDER BY s.level
+    `, [tokenHash]);
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Guest session not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      stats: result.rows.filter(row => row.level !== null)
+    });
+
+  } catch (error) {
+    console.error("Guest stats error:", error.message);
+
+    return res.status(503).json({
+      success: false,
+      message: "Unable to load guest stats"
+    });
+  }
+});
+
+/* =========================
+   SAVE GUEST CHALLENGE STATS
+========================= */
+
+app.post("/api/guest/challenge-stats", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
+  if (!pool) {
+    return res.status(503).json({
+      success: false,
+      message: "Database unavailable"
+    });
+  }
+
+  try {
+    const cookie = (req.headers.cookie || "")
+      .split(";")
+      .map(item => item.trim())
+      .find(item => item.startsWith("gomoku_guest="));
+
+    const guestToken = cookie
+      ? cookie.slice("gomoku_guest=".length)
+      : "";
+
+    if (!/^[a-f0-9]{64}$/.test(guestToken)) {
+      return res.status(401).json({
+        success: false,
+        message: "Guest session required"
+      });
+    }
+
+    const {
+      level,
+      points,
+      wins,
+      losses,
+      streak,
+      bestStreak
+    } = req.body || {};
+
+    const cleanLevel = Number(level);
+    const cleanRevision = req.body?.revision;
+    const values = [
+      points, wins, losses, streak, bestStreak
+    ];
+
+    if (
+      ![2, 3, 4, 5].includes(cleanLevel) ||
+      !Number.isSafeInteger(cleanRevision) ||
+      cleanRevision < 0 ||
+      !values.every(value =>
+        Number.isSafeInteger(value) &&
+        value >= 0 &&
+        value <= 100000000
+      ) ||
+      streak > wins ||
+      bestStreak < streak
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid challenge stats"
+      });
+    }
+
+    const tokenHash = guestCrypto
+      .createHash("sha256")
+      .update(guestToken)
+      .digest("hex");
+
+      // Enregistrer le nom du joueur invité
+const cleanGuestName = normalizePlayerName(
+  req.body?.name
+);
+
+if (
+  cleanGuestName &&
+  cleanGuestName !== "Player"
+) {
+  await pool.query(
+    `UPDATE guest_players
+     SET display_name = $1,
+         updated_at = NOW()
+     WHERE token_hash = $2`,
+    [cleanGuestName, tokenHash]
+  );
+}
+
+    const result = await pool.query(`
+      INSERT INTO guest_challenge_stats (
+        guest_id,
+        level,
+        points,
+        wins,
+        losses,
+        streak,
+        best_streak,
+        revision
+      )
+      SELECT
+  p.id, $2, $3, $4, $5, $6, $7, 1
+FROM guest_players p
+WHERE p.token_hash = $1
+  AND (
+    $8 = 0
+    OR EXISTS (
+      SELECT 1
+      FROM guest_challenge_stats existing
+      WHERE existing.guest_id = p.id
+        AND existing.level = $2
+    )
+  )
+
+ON CONFLICT (guest_id, level)
+      DO UPDATE SET
+        points = EXCLUDED.points,
+        wins = EXCLUDED.wins,
+        losses = EXCLUDED.losses,
+        streak = EXCLUDED.streak,
+        best_streak = EXCLUDED.best_streak,
+        revision = guest_challenge_stats.revision + 1,
+        updated_at = NOW()
+
+        WHERE guest_challenge_stats.revision = $8
+
+       RETURNING
+        level,
+        points,
+        wins,
+        losses,
+        streak,
+        best_streak,
+        revision
+    `, [
+      tokenHash,
+      cleanLevel,
+      points,
+      wins,
+      losses,
+      streak,
+      bestStreak,
+      cleanRevision
+    ]);
+
+    if (result.rows.length === 0) {
+  // Récupérer la version actuelle
+  // des statistiques dans PostgreSQL.
+  const currentResult = await pool.query(
+    `
+    SELECT
+      s.level,
+      s.points,
+      s.wins,
+      s.losses,
+      s.streak,
+      s.best_streak,
+      s.revision
+    FROM guest_challenge_stats s
+    JOIN guest_players p
+      ON p.id = s.guest_id
+    WHERE p.token_hash = $1
+      AND s.level = $2
+    `,
+    [tokenHash, cleanLevel]
+  );
+
+  return res.status(409).json({
+    success: false,
+    message: "Challenge stats revision conflict",
+    serverStats: currentResult.rows[0] || null
+  });
+}
+
+    await broadcastChallengeLeaderboard(cleanLevel);
+
+    console.log("✅ Guest Challenge stats saved");
+
+    return res.json({
+      success: true,
+      stats: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error(
+      "Guest Challenge save error:",
+      error.message
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to save challenge stats"
+    });
+  }
+});
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -233,12 +666,77 @@ function getAllChallengeLeaderboardViews() {
   return result;
 }
 
-function broadcastChallengeLeaderboard(level) {
+/* =========================
+   PERMANENT CHALLENGE LEADERBOARD
+   POSTGRESQL
+========================= */
+
+async function getChallengeLeaderboardFromDatabase(level) {
+  if (!pool) {
+    throw new Error("PostgreSQL unavailable");
+  }
+
   const cleanLevel = normalizeLevel(level);
-  io.emit("challengeLeaderboard", {
-    level: cleanLevel,
-    leaderboard: getChallengeLeaderboardView(cleanLevel)
-  });
+
+  const result = await pool.query(
+    `
+    SELECT
+      p.id::text AS "playerId",
+      p.display_name AS name,
+      s.points
+    FROM guest_challenge_stats s
+    JOIN guest_players p
+      ON p.id = s.guest_id
+    WHERE s.level = $1
+      AND p.display_name NOT IN ('Guest', 'Player')
+    ORDER BY
+      s.points DESC,
+      s.updated_at ASC,
+      p.id ASC
+    LIMIT 100
+    `,
+    [Number(cleanLevel)]
+  );
+
+  return result.rows.map((player, index) => ({
+    rank: index + 1,
+    playerId: player.playerId,
+    name: player.name,
+    points: Number(player.points) || 0,
+    online: false,
+    level: cleanLevel
+  }));
+}
+
+async function broadcastChallengeLeaderboard(level) {
+  const cleanLevel = normalizeLevel(level);
+
+  if (!pool) {
+    console.warn(
+      "PostgreSQL unavailable for Challenge leaderboard"
+    );
+    return;
+  }
+
+  try {
+    const leaderboard =
+      await getChallengeLeaderboardFromDatabase(cleanLevel);
+
+    io.emit("challengeLeaderboard", {
+      level: cleanLevel,
+      leaderboard
+    });
+
+    console.log(
+      `✅ PostgreSQL leaderboard broadcast: Level ${cleanLevel}`
+    );
+
+  } catch (error) {
+    console.error(
+      "Challenge leaderboard broadcast error:",
+      error.message
+    );
+  }
 }
 
 /* =========================
@@ -667,59 +1165,113 @@ function canPerformAction(socket, key, limitMs) {
    API ROUTES - CHALLENGE
 ========================= */
 
-app.get("/api/challenge/leaderboard", (req, res) => {
+app.get("/api/challenge/leaderboard", async (req, res) => {
   const level = normalizeLevel(req.query.level || "2");
 
-  return res.json({
-    success: true,
-    level,
-    leaderboard: getChallengeLeaderboardView(level)
-  });
-});
-
-app.get("/api/challenge/leaderboards", (req, res) => {
-  return res.json({
-    success: true,
-    leaderboards: getAllChallengeLeaderboardViews()
-  });
-});
-
-app.post("/api/challenge/leaderboard/upsert", (req, res) => {
-  const { playerId, name, points, online, level } = req.body || {};
-
-  const cleanId = normalizePlayerId(playerId);
-  const cleanName = normalizePlayerName(name);
-  const cleanLevel = normalizeLevel(level);
-
-  if (!cleanId) {
-    return res.status(400).json({
+  if (!pool) {
+    return res.status(503).json({
       success: false,
-      message: "Valid playerId is required."
+      message: "PostgreSQL unavailable"
     });
   }
 
-  if (!cleanName || cleanName === "Player") {
-    return res.status(400).json({
+  try {
+    const leaderboard =
+      await getChallengeLeaderboardFromDatabase(level);
+
+    return res.json({
+      success: true,
+      level,
+      leaderboard
+    });
+
+  } catch (error) {
+    console.error(
+      "Challenge leaderboard database error:",
+      error.message
+    );
+
+    return res.status(503).json({
       success: false,
-      message: "Valid player name is required."
+      message: "Unable to load Challenge leaderboard"
+    });
+  }
+}); 
+
+app.get("/api/challenge/leaderboards", async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({
+      success: false,
+      message: "PostgreSQL unavailable"
     });
   }
 
-  const updatedPlayer = upsertChallengePlayer(cleanLevel, cleanId, cleanName, {
-    points: typeof points === "number" ? points : undefined,
-    online: typeof online === "boolean" ? online : undefined
-  });
+  try {
+    const leaderboards = {};
 
-  broadcastChallengeLeaderboard(cleanLevel);
+    for (const level of VALID_LEVELS) {
+      leaderboards[level] =
+        await getChallengeLeaderboardFromDatabase(level);
+    }
 
-  return res.json({
-    success: true,
-    player: updatedPlayer,
-    level: cleanLevel,
-    leaderboard: getChallengeLeaderboardView(cleanLevel)
-  });
+    return res.json({
+      success: true,
+      leaderboards
+    });
+
+  } catch (error) {
+    console.error(
+      "Challenge leaderboards database error:",
+      error.message
+    );
+
+    return res.status(503).json({
+      success: false,
+      message: "Unable to load Challenge leaderboards"
+    });
+  }
 });
+/* =========================
+   CHALLENGE LEGACY SYNC
+   POSTGRESQL SOURCE
+========================= */
 
+app.post("/api/challenge/leaderboard/upsert", async (req, res) => {
+  const level = normalizeLevel(req.body?.level);
+
+  if (!pool) {
+    return res.status(503).json({
+      success: false,
+      message: "PostgreSQL unavailable"
+    });
+  }
+
+  try {
+    // Ancienne route conservée pour compatibilité.
+    // Les points sont maintenant enregistrés
+    // uniquement via la session Guest authentifiée.
+
+    const leaderboard =
+      await getChallengeLeaderboardFromDatabase(level);
+
+    return res.json({
+      success: true,
+      level,
+      leaderboard
+    });
+
+  } catch (error) {
+    console.error(
+      "Challenge legacy sync error:",
+      error.message
+    );
+
+    return res.status(503).json({
+      success: false,
+      message: "Unable to synchronize Challenge"
+    });
+  }
+});
 /* =========================
    TOURNAMENT HELPERS
 ========================= */
@@ -4442,43 +4994,32 @@ socket.on("registerChallengePlayer", ({ playerId, name, level }) => {
   );
 });
 
+/* =========================
+   CHALLENGE SOCKET SYNC
+   POSTGRESQL
+========================= */
 
 socket.on(
   "updateChallengePoints",
-  ({ playerId, name, points, level }) => {
-    const cleanId = normalizePlayerId(playerId);
-    const cleanName = normalizePlayerName(name);
-    const cleanLevel = normalizeLevel(level);
-    const cleanPoints = Number(points);
+  ({ level } = {}) => {
 
     if (
-      !cleanId ||
-      !cleanName ||
-      cleanName === "Player" ||
-      !Number.isFinite(cleanPoints)
+      !canPerformAction(
+        socket,
+        "challengeLeaderboardRefresh",
+        1000
+      )
     ) {
       return;
     }
 
-    socket.challengePlayerId = cleanId;
-    socket.challengePlayerName = cleanName;
-    socket.challengeLevel = cleanLevel;
+    const cleanLevel = normalizeLevel(level);
 
-    upsertChallengePlayer(
-      cleanLevel,
-      cleanId,
-      cleanName,
-      {
-        points: Math.max(0, Math.floor(cleanPoints)),
-        online: true
-      }
-    );
+    // Les points sont sauvegardés dans PostgreSQL
+    // via /api/guest/challenge-stats.
+    // Socket.IO diffuse uniquement le classement.
 
     broadcastChallengeLeaderboard(cleanLevel);
-
-    console.log(
-      `🏆 Challenge points updated: ${cleanName} • ${cleanPoints} pts • Level ${cleanLevel}`
-    );
   }
 );
 
