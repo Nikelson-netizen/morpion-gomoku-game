@@ -64,7 +64,6 @@ async function initializeGuestDatabase() {
     losses INTEGER NOT NULL DEFAULT 0,
     streak INTEGER NOT NULL DEFAULT 0,
     best_streak INTEGER NOT NULL DEFAULT 0,
-git remote -v
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (guest_id, level)
