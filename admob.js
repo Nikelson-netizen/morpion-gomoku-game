@@ -2,6 +2,13 @@
 (function () {
   const capacitor = window.Capacitor;
 
+  console.log("[AdMob DIAGNOSTIC]", {
+  capacitorPresent: Boolean(capacitor),
+  native: capacitor?.isNativePlatform?.(),
+  platform: capacitor?.getPlatform?.(),
+  pluginPresent: Boolean(capacitor?.Plugins?.AdMob)
+});
+
   const isAndroidApp =
     capacitor?.isNativePlatform?.() === true &&
     capacitor?.getPlatform?.() === "android";
