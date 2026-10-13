@@ -807,6 +807,32 @@ function showWinner(winnerName) {
     }
   }
 
+  // Compter les parties terminées pour AdMob Android
+if (
+  !winnerAlreadyCounted &&
+  !isWatching &&
+  window.Capacitor?.getPlatform?.() === "android"
+) {
+  const key = "gomokuFinishedGamesForAds";
+  const total = (Number(localStorage.getItem(key)) || 0) + 1;
+
+  localStorage.setItem(key, String(total));
+
+  console.log(
+    `[AdMob] Partie ${total} terminée. ` +
+    (total % 2 === 0 ? "Annonce prévue" : "Pas d'annonce")
+  );
+
+  // Afficher une annonce de test après deux parties
+if (total % 2 === 0) {
+  if (window.GomokuAds?.interstitialReady) {
+    void window.GomokuAds.showTestInterstitial();
+  } else {
+    console.log("[AdMob] Annonce non prête, le jeu continue");
+  }
+}
+}
+
   winnerAlreadyCounted = true;
   renderMatchScore();
 
