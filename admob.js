@@ -25,13 +25,15 @@
 
   testAdId: "ca-app-pub-3940256099942544/1033173712",
 
+  productionAdId: "ca-app-pub-1324909808984599/9759639125",
+
   async prepareTestInterstitial() {
     if (!this.ready || !admob) return false;
 
     try {
       await admob.prepareInterstitial({
-        adId: this.testAdId,
-        isTesting: true
+       adId: this.productionAdId,
+       isTesting: false
       });
 
       this.interstitialReady = true;
@@ -55,7 +57,7 @@
 
   try {
     await admob.showInterstitial({
-      adId: this.testAdId
+     adId: this.productionAdId
     });
 
     console.log("[AdMob] Affichage demandé");
