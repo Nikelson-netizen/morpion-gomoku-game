@@ -825,10 +825,31 @@ if (
 
   // Afficher une annonce de test après deux parties
 if (total % 2 === 0) {
-  if (window.GomokuAds?.interstitialReady) {
-    void window.GomokuAds.showTestInterstitial();
+  if (window.GomokuAds?.available) {
+    void (async () => {
+      try {
+        if (!window.GomokuAds.interstitialReady) {
+          console.log("[AdMob] Chargement de l'annonce...");
+
+          const loaded =
+            await window.GomokuAds.prepareTestInterstitial();
+
+          if (!loaded) {
+            console.log("[AdMob] Chargement impossible");
+            return;
+          }
+        }
+
+        console.log("[AdMob] Affichage de l'annonce");
+
+        await window.GomokuAds.showTestInterstitial();
+
+      } catch (error) {
+        console.error("[AdMob] Erreur :", error);
+      }
+    })();
   } else {
-    console.log("[AdMob] Annonce non prête, le jeu continue");
+    console.log("[AdMob] Plugin AdMob indisponible");
   }
 }
 }
