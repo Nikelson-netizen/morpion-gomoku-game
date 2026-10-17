@@ -452,6 +452,77 @@ function resetMatchScore() {
   renderMatchScore();
 }
 
+function renderAvailableTournaments(tournaments) {
+  const list = document.getElementById("availableTournamentsList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  if (!Array.isArray(tournaments) || tournaments.length === 0) {
+    list.textContent = "No tournament available.";
+    return;
+  }
+
+  tournaments.forEach((tournament) => {
+    const item = document.createElement("div");
+
+    item.style.marginTop = "8px";
+    item.style.padding = "8px";
+    item.style.border = "1px solid #ccc";
+    item.style.borderRadius = "8px";
+
+    const name = document.createElement("div");
+    name.textContent = `🏆 ${tournament.name}`;
+
+    const organizer = document.createElement("div");
+    organizer.textContent = `Organizer: ${tournament.organizer}`;
+
+    const players = document.createElement("div");
+    players.textContent =
+      `Players: ${tournament.playersCount}/${tournament.maxPlayers}`;
+
+    const code = document.createElement("div");
+    code.textContent = `Code: ${tournament.code}`;
+
+    const joinBtn = document.createElement("button");
+
+const isFull =
+  tournament.playersCount >= tournament.maxPlayers;
+
+joinBtn.type = "button";
+joinBtn.textContent = isFull ? "Full" : "Join";
+joinBtn.disabled = isFull;
+joinBtn.style.marginTop = "6px";
+
+joinBtn.addEventListener("click", () => {
+  if (isFull) return;
+
+  if (tournamentCodeInput) {
+    tournamentCodeInput.value = tournament.code;
+  }
+
+  if (tournamentFormFields) {
+    tournamentFormFields.style.display = "block";
+    tournamentFormFields.dataset.mode = "join";
+  }
+
+  if (tournamentNameField) {
+    tournamentNameField.style.display = "none";
+  }
+
+  tournamentPlayerNameInput?.focus();
+});
+
+    item.appendChild(name);
+    item.appendChild(organizer);
+    item.appendChild(players);
+    item.appendChild(code);
+    item.appendChild(joinBtn);
+
+    list.appendChild(item);
+  });
+}
+
 function updateModeSpecificUI() {
   const mode = modeSelect?.value || "pvp";
   const isTournamentMode =
@@ -1970,6 +2041,7 @@ if (startTournamentBtn) {
 }
 
   renderTournamentPlayers(tournament);
+  closeTournamentForm();
 });
 
 socket.on(
@@ -2276,6 +2348,11 @@ if (shareContainer) {
   }
 );
 
+socket.on("tournamentAvailableUpdated", (tournaments) => {
+  console.log("🏆 Available tournaments:", tournaments);
+  renderAvailableTournaments(tournaments);
+});
+
 socket.on("tournamentJoined", ({ tournament }) => {
   tournamentInfo.innerHTML = `
 🏆 ${tournament.name}<br>
@@ -2286,6 +2363,7 @@ playersContent.style.display = "block";
 playersToggle.textContent = "▼";
 
   renderTournamentPlayers(tournament);
+  closeTournamentForm();
 });
 
 socket.on("tournamentUpdated", (tournament) => {
@@ -2434,6 +2512,7 @@ socket.on("tournamentError", ({ message }) => {
 });
 
   socket.on("connect", () => {
+    socket.emit("getAvailableTournaments");
     console.log("✅ Connected to server:", socket.id);
   });
 
@@ -2858,6 +2937,15 @@ updateModeSpecificUI();
     unlockBoard();
     updateTurnStatus();
   });
+
+  socket.on("gameDraw", (data) => {
+  console.log("🤝 Game draw:", data);
+
+  if (status) {
+    status.textContent =
+      "🤝 Draw — no line of 5 is still possible. New game starting...";
+  }
+});
 
   socket.on("gameWon", ({ winnerName, blackName, whiteName, matchScore: serverMatchScore }) => {
   currentBlackName = blackName || currentBlackName;
@@ -3479,9 +3567,9 @@ const shareSiteBtn = document.getElementById("shareSiteBtn");
 if (shareSiteBtn) {
   shareSiteBtn.addEventListener("click", async () => {
     const shareData = {
-  title: "Can you beat me? 🔥 Gomoku Online",
-  text: "Play Gomoku online with real players 🔥 Train your brain and strategy 🧠",
-  url: "https://gomoku-morpion-5-online.onrender.com/"
+  title: "Gomoku Online - Five in a Row",
+  text: "Play Gomoku Online 🎮 Challenge players and train your brain!",
+  url: "https://gomoku-morpion-5-online.onrender.com/download.html"
 };
 
     try {
@@ -3645,6 +3733,8 @@ let joinTournamentBtn;
 let tournamentPlayerNameInput;
 let tournamentNameInput;
 let tournamentCodeInput;
+let tournamentFormFields;
+let tournamentNameField;
 let tournamentInfo;
 let tournamentPlayers;
 let startTournamentBtn;
@@ -3674,6 +3764,12 @@ function initTournamentControls() {
   startTournamentBtn =
     document.getElementById("startTournamentBtn");
 
+    tournamentFormFields =
+  document.getElementById("tournamentFormFields");
+
+tournamentNameField =
+  document.getElementById("tournamentNameField");
+
   console.log("Tournament buttons:", {
     createTournamentBtn,
     joinTournamentBtn,
@@ -3682,6 +3778,15 @@ function initTournamentControls() {
 
   if (createTournamentBtn) {
     createTournamentBtn.addEventListener("click", () => {
+
+      if (tournamentFormFields?.dataset.mode !== "create") {
+  tournamentFormFields.style.display = "block";
+  tournamentNameField.style.display = "block";
+  tournamentFormFields.dataset.mode = "create";
+
+  tournamentPlayerNameInput?.focus();
+  return;
+}
       console.log("✅ CREATE TOURNAMENT CLICKED");
 
       const playerName =
@@ -3739,6 +3844,15 @@ function initTournamentControls() {
 
   if (joinTournamentBtn) {
     joinTournamentBtn.addEventListener("click", () => {
+
+      if (tournamentFormFields?.dataset.mode !== "join") {
+  tournamentFormFields.style.display = "block";
+  tournamentNameField.style.display = "none";
+  tournamentFormFields.dataset.mode = "join";
+
+  tournamentPlayerNameInput?.focus();
+  return;
+}
       console.log("✅ JOIN TOURNAMENT CLICKED");
 
       const playerName =
@@ -3820,6 +3934,13 @@ function initTournamentControls() {
         }
       );
     });
+  }
+}
+
+function closeTournamentForm() {
+  if (tournamentFormFields) {
+    tournamentFormFields.style.display = "none";
+    tournamentFormFields.dataset.mode = "";
   }
 }
 

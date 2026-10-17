@@ -111,7 +111,7 @@
         <div class="buttons-row">
           <button id="goOnline" class="online-tool" type="button">🔎 Find a player</button>
 
-          <button id="shareSiteBtn" type="button">🔗 Share Site</button>
+          <button id="shareSiteBtn" type="button">🔗 Share App</button>
 
           <div class="tournament-actions tournament-tool">
             <button id="createTournamentBtn" type="button">Create Tournament</button>
@@ -314,28 +314,53 @@
 
         <div class="tournament-box">
 
-<label for="tournamentPlayerName">Player Name</label>
-<input
-  id="tournamentPlayerName"
-  type="text"
-  placeholder="Your name"
-  maxlength="20"
-/>
+<div id="tournamentFormFields" style="display:none;">
 
-  <label for="tournamentName">Tournament Name</label>
-  <input id="tournamentName" type="text" placeholder="Example: Kelly Cup" maxlength="30" />
+  <label for="tournamentPlayerName">Player Name</label>
+  <input
+    id="tournamentPlayerName"
+    type="text"
+    placeholder="Your name"
+    maxlength="20"
+  />
+
+  <div id="tournamentNameField">
+    <label for="tournamentName">Tournament Name</label>
+    <input
+      id="tournamentName"
+      type="text"
+      placeholder="Example: Kelly Cup"
+      maxlength="30"
+    />
+  </div>
 
   <label for="tournamentCode">Tournament Code</label>
-  <input id="tournamentCode" type="text" placeholder="Example: KELLY2026" maxlength="20" />
+  <input
+    id="tournamentCode"
+    type="text"
+    placeholder="Example: KELLY2026"
+  />
+
+</div>
 
           <div id="tournamentInfo">
   Organizer creates a tournament. Players join with the code.
 </div>
 
 <div class="players-section" style="margin-top:8px; font-weight:bold;">
-  <div id="playersHeader" style="cursor:pointer;">
+  <div id="playersHeader" style="display:none;">
     🏆 Tournament Players <span id="playersToggle" class="players-arrow">▶️</span>
   </div>
+
+  <div id="availableTournamentsSection" style="margin-top:12px;">
+  <div style="font-weight:bold;">
+    🏆 Tournament Available
+  </div>
+
+  <div id="availableTournamentsList">
+    No tournament available.
+  </div>
+</div>
 
   <div id="playersContent" style="display:none;">
     <div id="tournamentPlayersList"></div>
