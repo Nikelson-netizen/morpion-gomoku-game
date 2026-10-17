@@ -554,6 +554,24 @@ const publicMatches = [];
 const pendingInvites = new Map();
 const tournaments = new Map();
 
+function getAvailableTournaments() {
+  return Array.from(tournaments.values())
+    .filter((tournament) => !tournament.started && !tournament.locked)
+    .map((tournament) => ({
+      name: tournament.name,
+      code: tournament.code,
+      organizer: tournament.organizer || tournament.creator,
+      playersCount: Array.isArray(tournament.players)
+        ? tournament.players.length
+        : 0,
+      maxPlayers: 10
+    }));
+}
+
+function broadcastAvailableTournaments() {
+  io.emit("tournamentAvailableUpdated", getAvailableTournaments());
+}
+
 /* =========================
    CHALLENGE LEADERBOARD BY LEVEL
 ========================= */
@@ -820,6 +838,89 @@ function isWinningMove(board, index, player) {
   }
 
   return false;
+}
+
+function playerCanStillMakeFive(board, player) {
+  if (
+    !Array.isArray(board) ||
+    board.length !== BOARD_CELLS
+  ) {
+    return false;
+  }
+
+  const opponent =
+    player === "black"
+      ? "white"
+      : "black";
+
+  /*
+   * Examiner toutes les séries possibles
+   * de 5 cases :
+   * horizontal, vertical et diagonales.
+   */
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      for (const [dr, dc] of WIN_DIRS) {
+        const endRow =
+          row + dr * 4;
+
+        const endCol =
+          col + dc * 4;
+
+        if (!inBounds(endRow, endCol)) {
+          continue;
+        }
+
+        let possible = true;
+
+        for (let step = 0; step < 5; step++) {
+          const r =
+            row + dr * step;
+
+          const c =
+            col + dc * step;
+
+          const cell =
+            board[idxOf(r, c)];
+
+          /*
+           * Si l'adversaire occupe une case
+           * de cette série de 5,
+           * cette série est impossible.
+           */
+          if (cell === opponent) {
+            possible = false;
+            break;
+          }
+        }
+
+        if (possible) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+function boardHasNoPossibleFive(board) {
+  const blackCanWin =
+    playerCanStillMakeFive(
+      board,
+      "black"
+    );
+
+  const whiteCanWin =
+    playerCanStillMakeFive(
+      board,
+      "white"
+    );
+
+  return (
+    !blackCanWin &&
+    !whiteCanWin
+  );
 }
 
 function sanitizeName(name) {
@@ -2707,6 +2808,13 @@ socket.on(
   }
 );
 
+socket.on("getAvailableTournaments", () => {
+  socket.emit(
+    "tournamentAvailableUpdated",
+    getAvailableTournaments()
+  );
+});
+
   // ===============================
   // CREATE TOURNAMENT
   // ===============================
@@ -2785,6 +2893,8 @@ socket.tournamentChatRoom =
       });
 
       io.emit("tournamentUpdated", tournament);
+
+      broadcastAvailableTournaments();
 
       console.log(
         `🏆 Tournament created: ${cleanCode} by ${cleanPlayerName}`
@@ -2900,6 +3010,8 @@ socket.tournamentChatRoom =
 
       io.emit("tournamentUpdated", tournament);
 
+      broadcastAvailableTournaments();
+
       console.log(
         `🏆 ${cleanPlayerName} joined tournament ${cleanCode}`
       );
@@ -2967,6 +3079,8 @@ socket.tournamentChatRoom =
 
       io.emit("tournamentStarted", tournament);
       io.emit("tournamentUpdated", tournament);
+
+      broadcastAvailableTournaments();
 
       console.log(
         `🏆 Tournament ${cleanCode} started with ` +
@@ -4667,6 +4781,261 @@ io.to(currentMatch.id).emit(
   }, 8000);
 }
 return;
+}
+
+// ==================================
+// DRAW - NO POSSIBLE FIVE LEFT
+// Online Multiplayer + Tournament
+// ==================================
+
+if (boardHasNoPossibleFive(match.board)) {
+  match.gameOver = true;
+  match.winnerName = null;
+
+  clearTournamentTurnTimer(match);
+
+  console.log(
+    `🤝 Draw: no possible line of 5 remains in match ${match.id}`
+  );
+
+  io.to(match.id).emit("gameDraw", {
+    message:
+      "🤝 Draw — neither player can still make a line of 5.",
+    blackName: match.blackName,
+    whiteName: match.whiteName,
+    matchScore:
+      match.matchScore || {
+        black: 0,
+        white: 0
+      },
+    isTournamentMatch:
+      !!match.isTournamentMatch
+  });
+
+  emitMatchState(match);
+
+  setTimeout(() => {
+    const currentMatch =
+      findMatchById(match.id);
+
+    if (!currentMatch) {
+      return;
+    }
+
+    // ==============================
+    // TOURNAMENT DRAW RESET
+    // ==============================
+
+    if (currentMatch.isTournamentMatch) {
+      const tournament =
+        tournaments.get(
+          currentMatch.tournamentCode
+        );
+
+      const tournamentMatch =
+        tournament?.matches.find(
+          (item) =>
+            item.id ===
+            currentMatch.tournamentMatchId
+        );
+
+      if (
+        !tournament ||
+        !tournamentMatch ||
+        tournamentMatch.status === "finished"
+      ) {
+        return;
+      }
+
+      currentMatch.board =
+        Array(BOARD_CELLS).fill(null);
+
+      currentMatch.gameOver = false;
+      currentMatch.winnerName = null;
+      currentMatch.winningCells = [];
+      currentMatch.lastMove = null;
+
+      // Alterner les couleurs
+      const oldBlackId =
+        currentMatch.blackId;
+
+      const oldBlackName =
+        currentMatch.blackName;
+
+      currentMatch.blackId =
+        currentMatch.whiteId;
+
+      currentMatch.whiteId =
+        oldBlackId;
+
+      currentMatch.blackName =
+        currentMatch.whiteName;
+
+      currentMatch.whiteName =
+        oldBlackName;
+
+      currentMatch.currentPlayer =
+        "black";
+
+      currentMatch.nextStarterId =
+        currentMatch.whiteId;
+
+      // Le score reste exactement le même
+      syncTournamentSeriesScore(
+        currentMatch,
+        tournamentMatch
+      );
+
+      io.to(currentMatch.blackId).emit(
+        "tournamentColorChanged",
+        {
+          color: "black",
+          opponentName:
+            currentMatch.whiteName
+        }
+      );
+
+      io.to(currentMatch.whiteId).emit(
+        "tournamentColorChanged",
+        {
+          color: "white",
+          opponentName:
+            currentMatch.blackName
+        }
+      );
+
+      io.to(currentMatch.id).emit(
+        "onlineGameReset",
+        {
+          board:
+            currentMatch.board,
+
+          currentPlayer:
+            currentMatch.currentPlayer,
+
+          blackName:
+            currentMatch.blackName,
+
+          whiteName:
+            currentMatch.whiteName,
+
+          gameOver: false,
+          winnerName: null,
+
+          spectatorCount:
+            getSpectatorCount(
+              currentMatch
+            ),
+
+          matchScore:
+            currentMatch.matchScore,
+
+          isTournamentMatch: true,
+
+          drawRestart: true
+        }
+      );
+
+      io.to(currentMatch.id).emit(
+        "tournamentTurnTimerStopped"
+      );
+
+      emitMatchState(currentMatch);
+
+      startTournamentTurnTimer(
+        currentMatch
+      );
+
+      console.log(
+        `🤝 Tournament draw reset: ` +
+        `${currentMatch.blackName} is black, ` +
+        `${currentMatch.whiteName} is white`
+      );
+
+      return;
+    }
+
+    // ==============================
+    // NORMAL ONLINE DRAW RESET
+    // ==============================
+
+    currentMatch.board =
+      Array(BOARD_CELLS).fill(null);
+
+    currentMatch.gameOver = false;
+    currentMatch.winnerName = null;
+
+    currentMatch.moveHistory = [];
+    currentMatch.undoAvailable = false;
+
+    /*
+     * Utiliser le système déjà présent
+     * pour alterner le joueur qui commence.
+     */
+    const starterId =
+      currentMatch.nextStarterId;
+
+    if (
+      starterId ===
+      currentMatch.blackId
+    ) {
+      currentMatch.currentPlayer =
+        "black";
+
+      currentMatch.nextStarterId =
+        currentMatch.whiteId;
+    } else {
+      currentMatch.currentPlayer =
+        "white";
+
+      currentMatch.nextStarterId =
+        currentMatch.blackId;
+    }
+
+    io.to(currentMatch.id).emit(
+      "onlineGameReset",
+      {
+        board:
+          currentMatch.board,
+
+        currentPlayer:
+          currentMatch.currentPlayer,
+
+        blackName:
+          currentMatch.blackName,
+
+        whiteName:
+          currentMatch.whiteName,
+
+        gameOver: false,
+        winnerName: null,
+
+        spectatorCount:
+          getSpectatorCount(
+            currentMatch
+          ),
+
+        matchScore:
+          currentMatch.matchScore || {
+            black: 0,
+            white: 0
+          },
+
+        isTournamentMatch: false,
+
+        drawRestart: true
+      }
+    );
+
+    emitMatchState(currentMatch);
+
+    console.log(
+      "🤝 Online draw reset completed."
+    );
+
+  }, 3000);
+
+  return;
 }
 
     match.currentPlayer =
