@@ -17,11 +17,16 @@
     ? capacitor.Plugins?.AdMob
     : null;
 
-  window.GomokuAds = {
-    available: Boolean(admob),
-    ready: false,
+    const isIOSApp =
+  Boolean(
+    window.webkit?.messageHandlers?.admobInterstitial
+  );
 
-    interstitialReady: false,
+  window.GomokuAds = {
+    available: Boolean(admob) || isIOSApp,
+ready: isIOSApp,
+
+    interstitialReady: isIOSApp,
 
   testAdId: "ca-app-pub-3940256099942544/1033173712",
 
@@ -48,6 +53,17 @@
   },
 
   async showTestInterstitial() {
+    if (isIOSApp) {
+  window.webkit.messageHandlers
+    .admobInterstitial
+    .postMessage("show");
+
+  console.log(
+    "[AdMob iOS] Affichage demandé"
+  );
+
+  return true;
+}
   if (!admob || !this.ready || !this.interstitialReady) {
     console.log("[AdMob] Aucune annonce prête");
     return false;
@@ -71,6 +87,11 @@
 },
 
     async initialize() {
+      if (isIOSApp) {
+  this.ready = true;
+  console.log("[AdMob iOS] Pont natif disponible");
+  return true;
+}
       if (!admob) {
         console.log("[AdMob] Plugin natif indisponible");
         return false;

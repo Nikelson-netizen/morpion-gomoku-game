@@ -878,11 +878,16 @@ function showWinner(winnerName) {
     }
   }
 
-  // Compter les parties terminées pour AdMob Android
+  // Compter les parties terminées pour AdMob Android et iOS
 if (
   !winnerAlreadyCounted &&
   !isWatching &&
-  window.Capacitor?.getPlatform?.() === "android"
+  (
+    window.Capacitor?.getPlatform?.() === "android" ||
+    Boolean(
+      window.webkit?.messageHandlers?.admobInterstitial
+    )
+  )
 ) {
   const key = "gomokuFinishedGamesForAds";
   const total = (Number(localStorage.getItem(key)) || 0) + 1;
