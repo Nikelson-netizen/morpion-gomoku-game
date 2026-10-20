@@ -2959,7 +2959,6 @@ updateModeSpecificUI();
   black: Number(serverMatchScore?.black || 0),
   white: Number(serverMatchScore?.white || 0)
 };
-  winnerAlreadyCounted = true;
 
   gameOver = true;
   lockBoard();
