@@ -1589,8 +1589,7 @@ if (shareChallengeBtn) {
     const level = getStoredChallengeAiLevel();
     const first = getStoredChallengeFirstPlayer();
 
-    const shareUrl =
-  'https://gomoku-morpion-5-online.onrender.com/index.html?mode=ai&challenge=1&level=${level}&first=${first}';
+    'https://gomoku-morpion-5-online.onrender.com/download.html/index.html?mode=ai&challenge=1&level=${level}&first=${first}';
 
     const shareText = `🟢 I'm dominating Gomoku right now.
 

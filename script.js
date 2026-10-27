@@ -3657,7 +3657,7 @@ async function generateShareImage(winnerName) {
 
   ctx.fillStyle = "#2563eb";
   ctx.font = "bold 28px Arial";
-  ctx.fillText("gomoku-morpion-5-online.onrender.com", 540, 1335);
+  ctx.fillText("https://gomoku-morpion-5-online.onrender.com/download.html", 540, 1335);
 
   const link = document.createElement("a");
   link.download = "gomoku-match.png";
