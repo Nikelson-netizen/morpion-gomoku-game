@@ -213,6 +213,7 @@ const challengeLevel = localStorage.getItem("challengeLevel");
 const challengeFirstPlayer = localStorage.getItem("challengeFirstPlayer");
 
 let challengeSessionActive = false;
+window.isChallengeSessionActive = () => challengeSessionActive;
 
 function getTypedPlayerName() {
   return playerNameInput ? playerNameInput.value.trim() : "";
@@ -255,12 +256,7 @@ function loadAdSenseForWeb() {
 }
 
 function isChallengeModeActive() {
-  return (
-    modeSelect &&
-    modeSelect.value === "ai" &&
-    status &&
-    status.textContent.includes("Challenge Mode")
-  );
+  return modeSelect?.value === "challenge";
 }
 
 function refreshPlayerNames() {
@@ -287,9 +283,10 @@ function refreshPlayerNames() {
 
 function launchChallengeMode() {
   challengeSessionActive = true;
+  localStorage.setItem("challengeModeActive", "true");
 
-  modeSelect.value = "ai";
-  aiSelect.value = challengeLevel || "2";
+  modeSelect.value = "challenge";
+  aiSelect.value = challengeLevel || "1";
   firstPlayerSelect.value = challengeFirstPlayer || "human";
 
   if (playerNameInput) {
@@ -301,10 +298,10 @@ function launchChallengeMode() {
   currentWhiteName = "White";
 
   resetGame();
+  forceHomeToolsDisplay();
   status.textContent = "🔥 Challenge Mode - Enter your name";
 
   localStorage.removeItem("challengeMode");
-  localStorage.removeItem("challengeLevel");
   localStorage.removeItem("challengeFirstPlayer");
 }
 
@@ -525,6 +522,32 @@ joinBtn.addEventListener("click", () => {
 
 function updateModeSpecificUI() {
   const mode = modeSelect?.value || "pvp";
+
+  const restartBtn = document.getElementById("reset");
+const challengeType = document.getElementById("challengeType")?.value;
+
+if (restartBtn) {
+  restartBtn.style.display =
+    mode === "challenge" && challengeType === "ranked"
+      ? "none"
+      : "";
+}
+
+  const isChallengeModeSelected = mode === "challenge";
+  const isAiGameMode = mode === "ai" || mode === "challenge";
+
+  if (isChallengeModeSelected) {
+  challengeSessionActive =
+  document.getElementById("challengeType")?.value === "ranked";
+
+  const unlockedLevel =
+    localStorage.getItem("challengeLevel") || "1";
+
+  aiSelect.value = unlockedLevel;
+} else {
+  challengeSessionActive = false;
+}
+
   const isTournamentMode =
     mode === "tournament";
 
@@ -542,17 +565,8 @@ function updateModeSpecificUI() {
   }
 
   if (challengeBtn) {
-    const challengeAllowed =
-      mode === "ai" ||
-      mode === "pvp" ||
-      mode === "twoPlayers";
-
-    challengeBtn.style.display =
-      challengeAllowed &&
-      !isTournamentMode
-        ? "inline-flex"
-        : "none";
-  }
+  challengeBtn.style.display = "none";
+}
 }
 
 if (closeTournamentBtn) {
@@ -938,7 +952,10 @@ if (total % 2 === 0) {
 
   resetButton.textContent = "Play Again";
 
-  if (modeSelect.value === "ai") {
+  if (
+  modeSelect.value === "ai" ||
+  modeSelect.value === "challenge"
+) {
   resetButton.style.display = "inline-flex";
   movePlayAgainToBoard(resetButton);
 }
@@ -1005,10 +1022,13 @@ function initWorker() {
       const msg = e.data;
 
       if (msg.type === "inited") {
-        if (modeSelect.value === "ai" && firstPlayerSelect.value === "ai") {
-          maybePlayAI();
-        }
-      }
+  if (
+    (modeSelect.value === "ai" || modeSelect.value === "challenge") &&
+    firstPlayerSelect.value === "ai"
+  ) {
+    maybePlayAI();
+  }
+}
 
       if (msg.type === "move") {
         if (msg.jobId !== jobId) return;
@@ -1319,6 +1339,9 @@ function forceHomeToolsDisplay() {
   const aiTools =
     document.querySelectorAll(".ai-tool");
 
+    const challengeTools =
+  document.querySelectorAll(".challenge-tool");
+
   const onlineTools =
     document.querySelectorAll(".online-tool");
 
@@ -1333,6 +1356,10 @@ function forceHomeToolsDisplay() {
   aiTools.forEach((el) => {
     el.style.display = "none";
   });
+
+  challengeTools.forEach((el) => {
+  el.style.display = "none";
+});
 
   onlineTools.forEach((el) => {
     el.style.display = "none";
@@ -1355,6 +1382,75 @@ function forceHomeToolsDisplay() {
       el.style.display = "";
     });
   }
+
+  if (mode === "challenge") {
+  const challengeTypeSelect =
+    document.getElementById("challengeType");
+
+    if (!challengeTypeSelect.value) {
+  challengeTypeSelect.value = "free";
+}
+
+  const isRanked =
+    challengeTypeSelect?.value === "ranked";
+
+  challengeTools.forEach((el) => {
+    if (el.id === "challengeTypeGroup") {
+      el.style.display = "";
+    } else {
+      el.style.display = isRanked ? "" : "none";
+    }
+  });
+
+  aiTools.forEach((el) => {
+    el.style.display = "";
+  });
+
+  const restartBtn = document.getElementById("reset");
+const isRankedChallenge =
+  mode === "challenge" &&
+  document.getElementById("challengeType")?.value === "ranked";
+
+if (restartBtn && isRankedChallenge) {
+  restartBtn.style.display = "none";
+}
+
+  const aiLevelGroup =
+  document.getElementById("aiLevel")
+    ?.closest(".control-group");
+
+const firstPlayerGroup =
+  document.getElementById("firstPlayer")
+    ?.closest(".control-group");
+
+if (aiLevelGroup) {
+  aiLevelGroup.style.display = "";
+}
+
+if (firstPlayerGroup) {
+  firstPlayerGroup.style.display = "";
+}
+}
+
+const playerNameGroup =
+  document.getElementById("playerNameGroup");
+
+const isRankedChallenge =
+  mode === "challenge" &&
+  document.getElementById("challengeType")?.value === "ranked";
+
+if (playerNameGroup) {
+  playerNameGroup.style.display =
+    mode === "online" || isRankedChallenge
+      ? ""
+      : "none";
+}
+
+const resetBtn = document.getElementById("reset");
+
+if (resetBtn) {
+  resetBtn.style.display = isRankedChallenge ? "none" : "";
+}
 
   if (mode === "online") {
     onlineTools.forEach((el) => {
@@ -1551,7 +1647,10 @@ function getShareData(limit = 10) {
 
 // ----------------- GAME FLOW -----------------
 function handleMove(i) {
-  if (modeSelect.value === "ai") {
+  if (
+  modeSelect.value === "challenge" &&
+  document.getElementById("challengeType")?.value === "ranked"
+) {
   const nameInput = document.getElementById("playerName");
   const playerName = String(nameInput?.value || "").trim();
 
@@ -1615,7 +1714,13 @@ if (
     return;
   }
 
-  if (modeSelect.value === "ai" && currentPlayer === AI_PLAYER) return;
+  if (
+  (modeSelect.value === "ai" ||
+   modeSelect.value === "challenge") &&
+  currentPlayer === AI_PLAYER
+) {
+  return;
+}
 
   grid[i] = currentPlayer;
   localMoveHistory.push(i);
@@ -1651,7 +1756,12 @@ if (
 
 function handleAIMove(i) {
   if (gameOver) return;
-  if (modeSelect.value !== "ai") return;
+
+  if (
+  modeSelect.value !== "ai" &&
+  modeSelect.value !== "challenge"
+) return;
+
   if (currentPlayer !== AI_PLAYER) return;
   if (i == null || grid[i]) return;
 
@@ -1682,7 +1792,10 @@ function handleAIMove(i) {
 }
 
 function maybePlayAI() {
-  if (modeSelect.value === "ai") {
+  if (
+  modeSelect.value === "challenge" &&
+  document.getElementById("challengeType")?.value === "ranked"
+) {
     const nameInput = document.getElementById("playerName");
     const playerName = String(nameInput?.value || "").trim();
 
@@ -1693,7 +1806,10 @@ function maybePlayAI() {
   }
   if (!worker) return;
   if (gameOver) return;
-  if (modeSelect.value !== "ai") return;
+  if (
+  modeSelect.value !== "ai" &&
+  modeSelect.value !== "challenge"
+) return;
   if (currentPlayer !== AI_PLAYER) return;
 
   jobId++;
@@ -3236,7 +3352,11 @@ updateModeSpecificUI();
   unlockBoard();
   isWatching = false;
   watchingMatchId = null;
-  resetButton.style.display = "inline-block";
+  const isRankedChallenge =
+  modeSelect.value === "challenge" &&
+  document.getElementById("challengeType")?.value === "ranked";
+
+resetButton.style.display = isRankedChallenge ? "none" : "inline-block";
 
   if (modeSelect.value !== "online") {
   refreshPlayerNames();
@@ -3288,14 +3408,17 @@ localUndoAvailable = false;
     return;
   }
 
-  if (modeSelect.value === "ai" && firstPlayerSelect.value === "ai") {
-    currentPlayer = AI_PLAYER;
-    status.textContent = "Turn : AI";
-    maybePlayAI();
-  } else {
-    currentPlayer = "black";
-    status.textContent = `Turn : ${currentBlackName}`;
-  }
+  if (
+  (modeSelect.value === "ai" || modeSelect.value === "challenge") &&
+  firstPlayerSelect.value === "ai"
+) {
+  currentPlayer = AI_PLAYER;
+  status.textContent = "Turn : AI";
+  maybePlayAI();
+} else {
+  currentPlayer = "black";
+  status.textContent = `Turn : ${currentBlackName}`;
+}
 }
 
 // ----------------- BUTTONS -----------------
@@ -3338,6 +3461,31 @@ if (undoLastMoveBtn) {
 }
 resetButton.addEventListener("click", resetGame);
 modeSelect.addEventListener("change", () => {
+  if (modeSelect.value === "challenge") {
+  const challengeTypeSelect = document.getElementById("challengeType");
+
+  if (challengeTypeSelect) {
+    challengeTypeSelect.value = "free";
+  }
+
+  challengeSessionActive = false;
+
+  const playerNameGroup = document.getElementById("playerNameGroup");
+  if (playerNameGroup) {
+    playerNameGroup.style.display = "none";
+  }
+
+  document.getElementById("challengeFreeBtn")?.classList.add("active");
+  document.getElementById("challengeRankedBtn")?.classList.remove("active");
+}
+  const challengeTypeSelect = document.getElementById("challengeType");
+const isRankedChallenge =
+  modeSelect.value === "challenge" &&
+  challengeTypeSelect?.value === "ranked";
+
+  challengeSessionActive = isRankedChallenge;
+  localStorage.removeItem("challengeModeActive");
+
   updateChatMode();
   forceHomeToolsDisplay();
 hideTournamentTrophy();
@@ -3394,6 +3542,61 @@ hideTournamentTrophy();
     }
   }
 });
+
+const challengeTypeSelect = document.getElementById("challengeType");
+
+if (challengeTypeSelect) {
+  challengeTypeSelect.addEventListener("change", () => {
+    if (modeSelect.value !== "challenge") return;
+
+    challengeSessionActive =
+      challengeTypeSelect.value === "ranked";
+
+    resetGame();
+    forceHomeToolsDisplay();
+  });
+}
+
+const challengeFreeBtn = document.getElementById("challengeFreeBtn");
+const challengeRankedBtn = document.getElementById("challengeRankedBtn");
+
+function selectChallengeType(type) {
+  if (!challengeTypeSelect || !modeSelect) return;
+
+  challengeTypeSelect.value = type;
+  modeSelect.value = "challenge";
+
+  challengeSessionActive = type === "ranked";
+
+  const playerNameGroup = document.getElementById("playerNameGroup");
+
+if (playerNameGroup) {
+  playerNameGroup.style.display =
+    type === "ranked" ? "" : "none";
+}
+
+  challengeFreeBtn?.classList.toggle("active", type === "free");
+  challengeRankedBtn?.classList.toggle("active", type === "ranked");
+
+  challengeTypeSelect.dispatchEvent(
+    new Event("change", { bubbles: true })
+  );
+
+  forceHomeToolsDisplay();
+}
+
+if (modeSelect?.value === "challenge") {
+  selectChallengeType("free");
+}
+
+challengeFreeBtn?.addEventListener("click", () => {
+  selectChallengeType("free");
+});
+
+challengeRankedBtn?.addEventListener("click", () => {
+  selectChallengeType("ranked");
+});
+
 firstPlayerSelect.addEventListener("change", resetGame);
 
 if (leaveMatchButton) {
@@ -3532,11 +3735,22 @@ document.addEventListener("DOMContentLoaded", () => {
   initCollapsiblePanels();
 
   initTournamentControls();
-forceHomeToolsDisplay();
 
   hideTournamentTrophy();
-  resetGame();
-  updateModeSpecificUI();
+  if (modeSelect.value === "challenge") {
+  const challengeTypeSelect =
+    document.getElementById("challengeType");
+
+  if (challengeTypeSelect) {
+    challengeTypeSelect.value = "free";
+  }
+
+  challengeSessionActive = false;
+}
+
+resetGame();
+updateModeSpecificUI();
+forceHomeToolsDisplay();
   if (
   modeSelect.value === "online" ||
   modeSelect.value === "tournament"

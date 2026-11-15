@@ -38,8 +38,8 @@ const isIntegratedChallenge =
 const isChallengePage =
   isStandaloneChallengePage || isIntegratedChallenge;
 
-// ✅ Level 1 supprimé
-const VALID_LEVELS = ["2", "3", "4", "5"];
+// Challenge AI levels
+const VALID_LEVELS = ["1", "2", "3", "4", "5"];
 
 function getChallengePlayerId() {
   let id = localStorage.getItem("challengePlayerId");
@@ -212,31 +212,33 @@ const defaultChallengeData = {
   playerName: localStorage.getItem("challengePlayerName") || localStorage.getItem("playerName") || "Player",
   online: false,
 
-  selectedLeaderboardLevel: "2",
+  selectedLeaderboardLevel: "1",
 
   // ✅ stats séparées par niveau
   levelStats: {
+    "1": { points: 0, wins: 0, losses: 0, streak: 0, bestStreak: 0 },
     "2": { points: 0, wins: 0, losses: 0, streak: 0, bestStreak: 0 },
     "3": { points: 0, wins: 0, losses: 0, streak: 0, bestStreak: 0 },
     "4": { points: 0, wins: 0, losses: 0, streak: 0, bestStreak: 0 },
     "5": { points: 0, wins: 0, losses: 0, streak: 0, bestStreak: 0 }
-  },
+},
 
   history: [],
 
   leaderboards: {
-    "2": [],
-    "3": [],
-    "4": [],
-    "5": []
-  }
+  "1": [],
+  "2": [],
+  "3": [],
+  "4": [],
+  "5": []
+}
 };
 
 let challengeData = loadChallengeData();
 
 function normalizeLevel(level) {
   const clean = String(level || "").trim();
-  return VALID_LEVELS.includes(clean) ? clean : "2";
+  return VALID_LEVELS.includes(clean) ? clean : "1";
 }
 
 function getCurrentChallengeLevel() {
@@ -244,7 +246,7 @@ function getCurrentChallengeLevel() {
     (pageAiLevelSelect && pageAiLevelSelect.value) ||
       localStorage.getItem("challengeLevel") ||
       challengeData.selectedLeaderboardLevel ||
-      "2"
+      "1"
   );
 }
 
@@ -279,6 +281,7 @@ function ensureLeaderboardsShape(data) {
   return next;
 }
 
+    
 function ensureLevelStatsShape(data) {
   const next = { ...data };
 
@@ -328,7 +331,7 @@ function migrateLegacyData(data) {
     const targetLevel = normalizeLevel(
       localStorage.getItem("challengeLevel") ||
         next.selectedLeaderboardLevel ||
-        "2"
+        "1"
     );
 
     next.levelStats[targetLevel] = {
@@ -364,7 +367,7 @@ function normalizeChallengeData(data) {
 
   next.online = !!next.online;
   next.history = Array.isArray(next.history) ? next.history : [];
-  next.selectedLeaderboardLevel = normalizeLevel(next.selectedLeaderboardLevel || "2");
+  next.selectedLeaderboardLevel = normalizeLevel(next.selectedLeaderboardLevel || "1");
 
   VALID_LEVELS.forEach((level) => {
     next.leaderboards[level] = Array.isArray(next.leaderboards[level])
@@ -714,7 +717,7 @@ function getStoredChallengePlayerName() {
 }
 
 function getStoredChallengeAiLevel() {
-  return normalizeLevel(localStorage.getItem("challengeLevel") || "2");
+  return normalizeLevel(localStorage.getItem("challengeLevel") || "1");
 }
 
 function getStoredChallengeFirstPlayer() {
@@ -800,13 +803,75 @@ function addHistory(title, details, level = getCurrentChallengeLevel()) {
 }
 
 function getAiBonus(aiLevel) {
-  const levelNum = parseInt(aiLevel, 10) || 2;
+  const levelNum = parseInt(aiLevel, 10) || 1;
 
+  if (levelNum === 1) return 0;
   if (levelNum === 2) return 5;
   if (levelNum === 3) return 10;
   if (levelNum === 4) return 15;
   if (levelNum >= 5) return 20;
   return 0;
+}
+
+const CHALLENGE_WINS_TO_UNLOCK = {
+  "1": 2,
+  "2": 3,
+  "3": 4,
+  "4": 4
+};
+
+function getWinsNeededForNextLevel(level) {
+  const cleanLevel = normalizeLevel(level);
+
+  if (cleanLevel === "5") {
+    return null;
+  }
+
+  return CHALLENGE_WINS_TO_UNLOCK[cleanLevel] || null;
+}
+
+function checkChallengeLevelUp(level) {
+  const cleanLevel = normalizeLevel(level);
+
+  // Niveau 5 = niveau maximum
+  if (cleanLevel === "5") {
+    return {
+      leveledUp: false,
+      maxLevel: true,
+      level: "5"
+    };
+  }
+
+  const stats = getStatsForLevel(cleanLevel);
+  const winsNeeded = getWinsNeededForNextLevel(cleanLevel);
+
+  if (!winsNeeded || stats.wins < winsNeeded) {
+    return {
+      leveledUp: false,
+      maxLevel: false,
+      level: cleanLevel,
+      wins: stats.wins,
+      winsNeeded
+    };
+  }
+
+  const nextLevel = String(Number(cleanLevel) + 1);
+
+  localStorage.setItem("challengeLevel", nextLevel);
+  challengeData.selectedLeaderboardLevel = nextLevel;
+
+  if (pageAiLevelSelect) {
+    pageAiLevelSelect.value = nextLevel;
+  }
+
+  saveChallengeData();
+
+  return {
+    leveledUp: true,
+    maxLevel: nextLevel === "5",
+    previousLevel: cleanLevel,
+    level: nextLevel
+  };
 }
 
 // ✅ on ne reset PAS le joueur au refresh
@@ -925,22 +990,28 @@ function ensureLeaderboardTabs() {
 function renderLeaderboard() {
   if (!leaderboardList) return;
 
-  ensureLeaderboardTabs();
   leaderboardList.innerHTML = "";
 
-  const selectedLevel = getSelectedLeaderboardLevel();
-  const levelBoard = Array.isArray(challengeData.leaderboards[selectedLevel])
-    ? challengeData.leaderboards[selectedLevel]
+  const levelBoard = VALID_LEVELS.flatMap((level) => {
+  const players = Array.isArray(challengeData.leaderboards[level])
+    ? challengeData.leaderboards[level]
     : [];
 
-  const sorted = [...levelBoard]
+  return players.map((player) => ({
+    ...player,
+    level: String(level)
+  }));
+});
+
+const sorted = [...levelBoard]
     .filter((player) => player && player.name && player.name.trim() && player.name !== "Player")
     .sort((a, b) => b.points - a.points);
 
   if (!sorted.length) {
-    leaderboardList.innerHTML = `<div class="empty-text">No players yet in Level ${selectedLevel}</div>`;
-    return;
-  }
+  leaderboardList.innerHTML =
+    `<div class="empty-text">No players yet in the Global Leaderboard</div>`;
+  return;
+}
 
   sorted.forEach((player, index) => {
     const item = document.createElement("div");
@@ -953,7 +1024,7 @@ function renderLeaderboard() {
           <div class="lb-name">${player.name}</div>
           <div class="lb-sub">
             <span class="dot ${player.online ? "green" : "red"}"></span>
-            ${player.online ? "Online" : "Offline"} • Level ${selectedLevel}
+            ${player.online ? "Online" : "Offline"} • Level ${player.level}
           </div>
         </div>
       </div>
@@ -1232,9 +1303,34 @@ function handleWin({ aiStarted = false, onlineGame = false, fastWin = false, aiL
   stats.wins += 1;
   stats.streak += 1;
 
+  const levelProgress = checkChallengeLevelUp(level);
+
   if (stats.streak > stats.bestStreak) {
     stats.bestStreak = stats.streak;
   }
+
+  if (levelProgress.leveledUp) {
+  setTimeout(() => {
+    alert(
+      `🏆 Félicitations ! Niveau ${levelProgress.level} débloqué ! 🚀\nL'IA devient plus difficile.`
+    );
+  }, 300);
+} else if (levelProgress.maxLevel) {
+  setTimeout(() => {
+    alert(
+      `👑 Victoire au niveau 5 ! +${gain} points 🔥\nContinue pour monter dans le classement général.`
+    );
+  }, 300);
+} else {
+  const remaining =
+    levelProgress.winsNeeded - levelProgress.wins;
+
+  setTimeout(() => {
+    alert(
+      `🎉 Victoire ! ${levelProgress.wins}/${levelProgress.winsNeeded} victoires — encore ${remaining} pour débloquer le niveau ${Number(level) + 1} 🔥🤖`
+    );
+  }, 300);
+}
 
   addHistory(
     "✅ Victory",
@@ -1293,10 +1389,13 @@ function startChallenge() {
 
   updateLocalLeaderboardName(oldName, typedName);
 
-  localStorage.setItem(
-    "challengeLevel",
-    pageAiLevelSelect ? pageAiLevelSelect.value : getStoredChallengeAiLevel()
-  );
+  const unlockedLevel = getStoredChallengeAiLevel();
+
+localStorage.setItem("challengeLevel", unlockedLevel);
+
+if (pageAiLevelSelect) {
+  pageAiLevelSelect.value = unlockedLevel;
+}
   localStorage.setItem(
     "challengeFirstPlayer",
     pageFirstPlayerSelect ? pageFirstPlayerSelect.value : getStoredChallengeFirstPlayer()
@@ -1331,23 +1430,30 @@ function patchChallengeGameSync() {
   const originalShowWinner = window.showWinner;
 
   window.showWinner = function patchedShowWinner(winnerName) {
+    console.log("🏆 CHALLENGE TEST", {
+  winnerName,
+  mode: pageModeSelect?.value,
+  humanName: window.currentBlackName,
+  whiteName: window.currentWhiteName
+});
     const alreadyApplied = !!window.__challengeRoundApplied;
 
     const currentAiLevel = pageAiLevelSelect ? pageAiLevelSelect.value : getStoredChallengeAiLevel();
     const aiStarted =
       (pageFirstPlayerSelect ? pageFirstPlayerSelect.value : getStoredChallengeFirstPlayer()) === "ai";
 
-    const humanName =
-      typeof window.currentBlackName === "string" && window.currentBlackName.trim()
-        ? window.currentBlackName.trim()
-        : getStoredChallengePlayerName();
+    const humanName = (
+  pagePlayerNameInput?.value.trim() ||
+  getStoredChallengePlayerName()
+).trim()
 
     const whiteName =
       typeof window.currentWhiteName === "string" && window.currentWhiteName.trim()
         ? window.currentWhiteName.trim()
         : "White";
 
-    const isAiPageGame = pageModeSelect && pageModeSelect.value === "ai";
+    const isAiPageGame =
+  pageModeSelect && pageModeSelect.value === "challenge";
 
     if (!alreadyApplied && isAiPageGame) {
       if (winnerName === humanName) {
@@ -1444,12 +1550,9 @@ function bindChallengePageControls() {
       pageAiLevelSelect.value = storedLevel;
     }
 
-    // ✅ si level 1 existe encore dans le HTML, on le retire visuellement
-    Array.from(pageAiLevelSelect.options).forEach((opt) => {
-      if (opt.value === "1") {
-        opt.remove();
-      }
-    });
+    if (pageAiLevelSelect) {
+  pageAiLevelSelect.disabled = false;
+}
 
     pageAiLevelSelect.addEventListener("change", async () => {
       const cleanLevel = normalizeLevel(pageAiLevelSelect.value);
@@ -1757,7 +1860,6 @@ if (urlParams.first && pageFirstPlayerSelect) {
 
 renderAll();
 
-patchChallengeGameSync();
 resetRoundSyncFlag();
 bindCollapseCards();
 
@@ -1775,6 +1877,7 @@ if (isLocal || isAdmin) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  patchChallengeGameSync();
 
   // ✅ Initialiser une seule fois la session Guest
   window.gomokuGuestSessionReady =

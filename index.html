@@ -34,10 +34,8 @@
 
 <body class="mode-pvp">
 
-    </div>
-  </section>
-
   <div id="gamePage">
+    
     <div class="page-overlay">
     <div class="container">
 
@@ -72,13 +70,32 @@
           <label for="mode">Mode</label>
           <select id="mode">
             <option value="pvp">2 Players</option>
-            <option value="ai">Play vs AI</option>
+            <option value="challenge">🏆 Challenge</option>
             <option value="online">Online Multiplayer</option>
             <option value="tournament">Tournament</option>
           </select>
         </div>
 
-        <div class="control-group ai-tool">
+        <div class="control-group challenge-tool" id="challengeTypeGroup">
+  <label>Challenge Mode</label>
+
+  <div class="challenge-mode-buttons">
+    <button type="button" id="challengeFreeBtn">
+      🎮 Play vs AI
+    </button>
+
+    <button type="button" id="challengeRankedBtn">
+      🏆 Ranked Challenge
+    </button>
+  </div>
+
+  <select id="challengeType" style="display:none;">
+    <option value="free">Play vs AI</option>
+    <option value="ranked">Ranked Challenge</option>
+  </select>
+</div>
+
+        <div class="control-group ai-tool" id="aiLevelGroup">
           <label for="aiLevel">AI Level</label>
           <select id="aiLevel">
             <option value="1">Level 1 - Easy</option>
@@ -97,7 +114,7 @@
           </select>
         </div>
 
-        <div class="control-group online-tool ai-tool">
+        <div class="control-group" id="playerNameGroup">
           <label for="playerName">Player Name</label>
           <input
             id="playerName"
@@ -125,7 +142,7 @@
         </div>
       </section>
 
-      <section id="aiChallengePanel" class="ai-tool challenge-integrated-panel">
+      <section id="aiChallengePanel" class="challenge-tool challenge-integrated-panel">
 
   <div class="challenge-toolbar">
 
@@ -843,21 +860,46 @@
       const undoBtn = document.getElementById("undoLastMoveBtn");
 
       document.body.classList.remove(
-        "mode-pvp",
-        "mode-ai",
-        "mode-online",
-        "mode-tournament"
-      );
+  "mode-pvp",
+  "mode-ai",
+  "mode-challenge",
+  "mode-online",
+  "mode-tournament"
+);
 
       document.body.classList.add("mode-" + mode);
 
+     const challengePanel = document.getElementById("aiChallengePanel");
+
+if (challengePanel) {
+  challengePanel.style.display =
+    mode === "challenge" ? "block" : "none";
+}
+
       document.querySelectorAll(".ai-tool").forEach(el => {
-        el.style.display = mode === "ai" ? "" : "none";
-      });
+  el.style.display =
+    mode === "ai" || mode === "challenge"
+      ? ""
+      : "none";
+});
 
       document.querySelectorAll(".online-tool").forEach(el => {
         el.style.display = mode === "online" ? "" : "none";
       });
+
+const playerNameGroup = document.getElementById("playerNameGroup");
+
+if (playerNameGroup) {
+  const isRankedChallenge =
+    mode === "challenge" &&
+    document.getElementById("challengeType")?.value === "ranked";
+
+  playerNameGroup.style.setProperty(
+    "display",
+    mode === "online" || isRankedChallenge ? "" : "none",
+    "important"
+  );
+}
 
       document.querySelectorAll(".pvp-tool").forEach(el => {
         el.style.display = mode === "pvp" ? "" : "none";
