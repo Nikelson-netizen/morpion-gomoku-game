@@ -13,6 +13,9 @@ const { Pool } = require("pg");
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false
+      },
       max: 5,
       connectionTimeoutMillis: 10000
     })
@@ -28,6 +31,13 @@ if (pool) {
     });
 } else {
   console.log("DATABASE_URL not configured");
+}
+
+// RESET TEMPORAIRE DES DONNÉES CHALLENGE
+if (pool && process.env.RESET_CHALLENGE === "YES") {
+  pool.query("TRUNCATE TABLE guest_challenge_stats RESTART IDENTITY")
+    .then(() => console.log("✅ DONNÉES CHALLENGE SUPPRIMÉES"))
+    .catch((err) => console.error("❌ RESET CHALLENGE:", err.message));
 }
 
 /* =========================
@@ -57,7 +67,7 @@ async function initializeGuestDatabase() {
       REFERENCES guest_players(id) ON DELETE CASCADE,
 
     level INTEGER NOT NULL
-      CHECK (level IN (2, 3, 4, 5)),
+      CHECK (level IN (1,2, 3, 4, 5)),
 
     points INTEGER NOT NULL DEFAULT 0,
     wins INTEGER NOT NULL DEFAULT 0,
@@ -77,6 +87,17 @@ await pool.query(`
   ALTER TABLE guest_challenge_stats
   ADD COLUMN IF NOT EXISTS revision
   INTEGER NOT NULL DEFAULT 0
+`);
+
+await pool.query(`
+  ALTER TABLE guest_challenge_stats
+  DROP CONSTRAINT IF EXISTS guest_challenge_stats_level_check
+`);
+
+await pool.query(`
+  ALTER TABLE guest_challenge_stats
+  ADD CONSTRAINT guest_challenge_stats_level_check
+  CHECK (level IN (1, 2, 3, 4, 5))
 `);
 
 console.log("✅ Guest Challenge stats table ready");
@@ -321,7 +342,7 @@ app.post("/api/guest/challenge-stats", async (req, res) => {
     ];
 
     if (
-      ![2, 3, 4, 5].includes(cleanLevel) ||
+      ![1,2, 3, 4, 5].includes(cleanLevel) ||
       !Number.isSafeInteger(cleanRevision) ||
       cleanRevision < 0 ||
       !values.every(value =>
@@ -576,9 +597,10 @@ function broadcastAvailableTournaments() {
    CHALLENGE LEADERBOARD BY LEVEL
 ========================= */
 
-const VALID_LEVELS = ["2", "3", "4", "5"];
+const VALID_LEVELS = ["1", "2", "3", "4", "5"];
 
 const challengeLeaderboards = {
+  "1": [],
   "2": [],
   "3": [],
   "4": [],
@@ -598,7 +620,7 @@ function normalizePlayerId(playerId) {
 
 function normalizeLevel(level) {
   const clean = String(level || "").trim();
-  return VALID_LEVELS.includes(clean) ? clean : "2";
+  return VALID_LEVELS.includes(clean) ? clean : "1";
 }
 
 function getLevelBoard(level) {
@@ -694,6 +716,10 @@ async function getChallengeLeaderboardFromDatabase(level) {
   }
 
   const cleanLevel = normalizeLevel(level);
+
+  if (![1, 2, 3, 4, 5].includes(Number(cleanLevel))) {
+  throw new Error("Invalid Challenge level");
+}
 
   const result = await pool.query(
     `
