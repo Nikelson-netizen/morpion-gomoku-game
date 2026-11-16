@@ -29,6 +29,7 @@ const pageResetButton = document.getElementById("reset");
 const pageModeSelect = document.getElementById("mode");
 
 const STORAGE_KEY = "gomokuChallengeData";
+const CHALLENGE_RESET_VERSION_KEY = "gomokuChallengeResetVersion";
 const isStandaloneChallengePage =
   !!document.querySelector(".challenge-page");
 
@@ -396,6 +397,56 @@ function loadChallengeData() {
     const freshData = normalizeChallengeData(defaultChallengeData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
     return freshData;
+  }
+}
+
+async function checkGlobalChallengeReset() {
+  try {
+    const response = await fetch("/api/challenge/reset-version", {
+      cache: "no-store"
+    });
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const serverVersion = Number(data.version) || 0;
+    const localVersion =
+      Number(localStorage.getItem(CHALLENGE_RESET_VERSION_KEY)) || 0;
+
+    if (serverVersion <= localVersion) return;
+
+    // Effacer toutes les anciennes données Challenge
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("challengeLevel");
+    localStorage.removeItem("challengeResult");
+    localStorage.removeItem("challengePlayerId");
+    localStorage.removeItem("challengePlayerName");
+
+    VALID_LEVELS.forEach((level) => {
+      localStorage.removeItem(`gomokuChallengePending_${level}`);
+      localStorage.removeItem(`gomokuChallengeSynced_${level}`);
+      localStorage.removeItem(`gomokuChallengeConflict_${level}`);
+    });
+
+    // Enregistrer la version pour ne faire le reset qu'une seule fois
+    localStorage.setItem(
+      CHALLENGE_RESET_VERSION_KEY,
+      String(serverVersion)
+    );
+
+    console.log(
+      "✅ Challenge local complètement réinitialisé:",
+      serverVersion
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      "❌ Impossible de vérifier le reset Challenge:",
+      error.message
+    );
+
+    return false;
   }
 }
 
@@ -1856,24 +1907,46 @@ if (isLocal || isAdmin) {
 document.addEventListener("DOMContentLoaded", async () => {
   patchChallengeGameSync();
 
+  const globalResetApplied = await checkGlobalChallengeReset();
+
+if (globalResetApplied) {
+  challengeData = normalizeChallengeData(defaultChallengeData);
+  saveChallengeData();
+
+  if (pagePlayerNameInput) {
+    pagePlayerNameInput.value = "";
+  }
+
+  renderProfile();
+  renderLeaderboard();
+  renderHistory();
+}
+
   // ✅ Initialiser une seule fois la session Guest
   window.gomokuGuestSessionReady =
     initializeGomokuGuestSession();
 
   await window.gomokuGuestSessionReady;
 
-// Charger les anciennes statistiques PostgreSQL
-await loadGuestChallengeStats();
+// Charger les statistiques PostgreSQL seulement
+// si aucun reset global vient d'être appliqué
+if (!globalResetApplied) {
+  await loadGuestChallengeStats();
+}
 
-// Appliquer le résultat de la dernière partie
-// après la récupération des anciens points
-applyLastChallengeResult();
+if (!globalResetApplied) {
+  applyLastChallengeResult();
+} else {
+  localStorage.removeItem("challengeResult");
+}
 
 // Conserver les fonctions Challenge
 registerChallengeSocketListeners();
 
   await fetchAllLeaderboardsFromServer();
+  if (!globalResetApplied) {
   await retryPendingGuestChallengeSaves();
+}
 
   const playerName = (
     challengeData.playerName ||
@@ -1885,7 +1958,12 @@ registerChallengeSocketListeners();
   const level = getCurrentChallengeLevel();
   const challengeSocket = getChallengeSocket();
 
-  if (challengeSocket && playerName && playerName !== "Player") {
+  if (
+  !globalResetApplied &&
+  challengeSocket &&
+  playerName &&
+  playerName !== "Player"
+) {
     challengeSocket.emit("registerChallengePlayer", {
   playerId: getChallengePlayerId(),
   name: playerName,
@@ -1893,7 +1971,9 @@ registerChallengeSocketListeners();
 });
   }
 
+  if (!globalResetApplied) {
   await syncCurrentPlayerToServer();
+}
 
   renderProfile();
   renderLeaderboard();

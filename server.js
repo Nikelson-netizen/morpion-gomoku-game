@@ -49,6 +49,16 @@ if (pool && process.env.RESET_CHALLENGE === "YES") {
     });
 }
 
+// VERSION DU RESET GLOBAL CHALLENGE
+const CHALLENGE_RESET_VERSION = 1;
+
+app.get("/api/challenge/reset-version", (req, res) => {
+  res.json({
+    success: true,
+    version: CHALLENGE_RESET_VERSION
+  });
+});
+
 /* =========================
    GOMOKU GUEST DATABASE
 ========================= */
