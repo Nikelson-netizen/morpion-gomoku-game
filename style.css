@@ -2195,6 +2195,12 @@ body.mode-challenge:has(#challengeType option[value="ranked"]:checked)
   display: none !important;
 }
 
+/* Ranked Challenge : cacher Restart */
+body.mode-challenge:has(#challengeType option[value="ranked"]:checked)
+#reset {
+  display: none !important;
+}
+
 /* =========================================
    CHALLENGE TOOLBAR — gauche / droite
    ========================================= */

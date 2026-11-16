@@ -1411,8 +1411,8 @@ const isRankedChallenge =
   mode === "challenge" &&
   document.getElementById("challengeType")?.value === "ranked";
 
-if (restartBtn && isRankedChallenge) {
-  restartBtn.style.display = "none";
+if (restartBtn) {
+  restartBtn.style.display = isRankedChallenge ? "none" : "";
 }
 
   const aiLevelGroup =

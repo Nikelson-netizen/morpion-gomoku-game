@@ -965,6 +965,45 @@ function updateLocalLeaderboardName(oldName, newName) {
   });
 }
 
+function updateCurrentPlayerInLocalLeaderboard(level = getCurrentChallengeLevel()) {
+  const cleanLevel = normalizeLevel(level);
+  const name = String(challengeData.playerName || "").trim();
+
+  if (!name || name === "Player") return;
+
+  const stats = getStatsForLevel(cleanLevel);
+
+  const board = Array.isArray(challengeData.leaderboards[cleanLevel])
+    ? [...challengeData.leaderboards[cleanLevel]]
+    : [];
+
+  const existingIndex = board.findIndex(
+    (player) =>
+      player &&
+      String(player.name || "").trim().toLowerCase() ===
+        name.toLowerCase()
+  );
+
+  const playerData = {
+    playerId: getChallengePlayerId(),
+    name,
+    points: stats.points || 0,
+    online: true,
+    level: cleanLevel
+  };
+
+  if (existingIndex >= 0) {
+    board[existingIndex] = {
+      ...board[existingIndex],
+      ...playerData
+    };
+  } else {
+    board.push(playerData);
+  }
+
+  challengeData.leaderboards[cleanLevel] = board;
+}
+
 function renderProfile() {
   updateAvatar();
 
@@ -1357,7 +1396,14 @@ function handleWin({ aiStarted = false, onlineGame = false, fastWin = false, aiL
     level
   );
 
-  renderAll();
+  updateLocalLeaderboardName(
+  challengeData.playerName,
+  challengeData.playerName
+);
+
+updateCurrentPlayerInLocalLeaderboard(level);
+
+renderAll();
   syncPointsToServer(level);
   saveGuestChallengeStats(level);
 }
@@ -1382,6 +1428,8 @@ function handleLoss({ onlineGame = false, aiLevel = null } = {}) {
     `-${loss} pts • Level ${level}${onlineGame ? " • Online match" : ""}`,
     level
   );
+
+  updateCurrentPlayerInLocalLeaderboard(level);
 
   renderAll();
   syncPointsToServer(level);
