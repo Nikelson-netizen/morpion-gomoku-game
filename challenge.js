@@ -1077,19 +1077,6 @@ function registerChallengeSocketListeners() {
     const cleanLevel = normalizeLevel(level);
     if (!Array.isArray(leaderboard)) return;
 
-// Ne pas effacer le classement local
-// lorsque le serveur envoie une liste vide.
-if (
-  leaderboard.length === 0 &&
-  Array.isArray(challengeData.leaderboards[cleanLevel]) &&
-  challengeData.leaderboards[cleanLevel].length > 0
-) {
-  console.log(
-    `Level ${cleanLevel}: local leaderboard preserved`
-  );
-  return;
-}
-
     challengeData.leaderboards[cleanLevel] = leaderboard.map((player) => ({
       name: player.name,
       points: player.points,
@@ -1134,19 +1121,9 @@ async function fetchAllLeaderboardsFromServer() {
 
     VALID_LEVELS.forEach((level) => {
 
-  const serverBoard = data.leaderboards[level];
-
-  // Ne pas effacer les anciens classements locaux
-  // si le serveur retourne une liste vide.
-  if (
-    !Array.isArray(serverBoard) ||
-    serverBoard.length === 0
-  ) {
-    console.log(
-      `Level ${level}: keeping local leaderboard`
-    );
-    return;
-  }
+  const serverBoard = Array.isArray(data.leaderboards[level])
+  ? data.leaderboards[level]
+  : [];
 
   challengeData.leaderboards[level] =
     serverBoard.map((player) => ({
