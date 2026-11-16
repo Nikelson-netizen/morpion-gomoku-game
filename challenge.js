@@ -961,16 +961,6 @@ function updateLocalLeaderboardName(oldName, newName) {
       return player;
     });
 
-    if (!renamed) {
-      const currentStats = getStatsForLevel(level);
-      updated.push({
-        name: newClean,
-        points: currentStats.points || 0,
-        online: level === getCurrentChallengeLevel() ? true : !!challengeData.online,
-        level
-      });
-    }
-
   challengeData.leaderboards[level] = updated;
   });
 }
@@ -1309,6 +1299,7 @@ saveChallengeData();
 // Sauvegarder les nouveaux points dans PostgreSQL
 saveGuestChallengeStats(resultLevel);
 
+syncCurrentPlayerToServer();
 syncPointsToServer(resultLevel);
   } catch (err) {
     console.error("Error reading challengeResult:", err);

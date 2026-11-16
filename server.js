@@ -1312,7 +1312,7 @@ function canPerformAction(socket, key, limitMs) {
 ========================= */
 
 app.get("/api/challenge/leaderboard", async (req, res) => {
-  const level = normalizeLevel(req.query.level || "2");
+  const level = normalizeLevel(req.query.level || "1");
 
   if (!pool) {
     return res.status(503).json({
