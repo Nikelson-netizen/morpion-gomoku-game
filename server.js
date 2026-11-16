@@ -33,11 +33,20 @@ if (pool) {
   console.log("DATABASE_URL not configured");
 }
 
-// RESET TEMPORAIRE DES DONNÉES CHALLENGE
+// RESET TEMPORAIRE COMPLET DU CHALLENGE
 if (pool && process.env.RESET_CHALLENGE === "YES") {
-  pool.query("TRUNCATE TABLE guest_challenge_stats RESTART IDENTITY")
-    .then(() => console.log("✅ DONNÉES CHALLENGE SUPPRIMÉES"))
-    .catch((err) => console.error("❌ RESET CHALLENGE:", err.message));
+  pool.query(`
+    TRUNCATE TABLE
+      guest_challenge_stats,
+      guest_players
+    RESTART IDENTITY CASCADE
+  `)
+    .then(() => {
+      console.log("✅ CHALLENGE COMPLÈTEMENT RÉINITIALISÉ");
+    })
+    .catch((err) => {
+      console.error("❌ RESET CHALLENGE:", err.message);
+    });
 }
 
 /* =========================
