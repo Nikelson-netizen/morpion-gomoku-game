@@ -2195,10 +2195,19 @@ body.mode-challenge:has(#challengeType option[value="ranked"]:checked)
   display: none !important;
 }
 
-/* Ranked Challenge : cacher Restart */
+/* Ranked Challenge :
+   cacher Restart pendant la partie,
+   afficher seulement Play Again après la fin */
 body.mode-challenge:has(#challengeType option[value="ranked"]:checked)
 #reset {
   display: none !important;
+}
+
+body.mode-challenge:has(#challengeType option[value="ranked"]:checked)
+#reset.play-again,
+body.mode-challenge:has(#challengeType option[value="ranked"]:checked)
+#reset.play-again-center {
+  display: inline-flex !important;
 }
 
 /* =========================================

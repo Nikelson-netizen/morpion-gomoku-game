@@ -951,6 +951,7 @@ if (total % 2 === 0) {
     `🎉 ${winnerName} wins the game! Score: ${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
 
   resetButton.textContent = "Play Again";
+resetButton.classList.add("play-again");
 
   if (
   modeSelect.value === "ai" ||
