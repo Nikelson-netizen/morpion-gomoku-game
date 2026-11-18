@@ -421,6 +421,7 @@ async function checkGlobalChallengeReset() {
     localStorage.removeItem("challengeResult");
     localStorage.removeItem("challengePlayerId");
     localStorage.removeItem("challengePlayerName");
+    localStorage.removeItem("playerName");
 
     VALID_LEVELS.forEach((level) => {
       localStorage.removeItem(`gomokuChallengePending_${level}`);
@@ -1403,7 +1404,8 @@ function handleWin({ aiStarted = false, onlineGame = false, fastWin = false, aiL
 
 updateCurrentPlayerInLocalLeaderboard(level);
 
-renderAll();
+  renderAll();
+  syncCurrentPlayerToServer();
   syncPointsToServer(level);
   saveGuestChallengeStats(level);
 }
@@ -1949,7 +1951,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const globalResetApplied = await checkGlobalChallengeReset();
 
 if (globalResetApplied) {
-  challengeData = normalizeChallengeData(defaultChallengeData);
+  challengeData = normalizeChallengeData({
+  ...deepClone(defaultChallengeData),
+  browserPlayerId: getChallengePlayerId(),
+  playerName: "Player",
+  selectedLeaderboardLevel: "1",
+  history: [],
+  levelStats: deepClone(defaultChallengeData.levelStats),
+  leaderboards: deepClone(defaultChallengeData.leaderboards)
+});
   saveChallengeData();
 
   if (pagePlayerNameInput) {
