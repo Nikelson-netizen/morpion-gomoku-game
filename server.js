@@ -188,18 +188,24 @@ app.post("/api/guest/session", async (req, res) => {
       );
 
       if (result.rows.length === 0) {
-        return res.status(401).json({
-          success: false,
-          message: "Guest session not found"
-        });
-      }
-
-      return res.json({
-        success: true,
-        guestId: result.rows[0].id,
-        playerName: result.rows[0].display_name
-      });
-    }
+  // L'ancien cookie existe encore, mais le joueur a été supprimé
+  // de PostgreSQL après un reset. On supprime ce cookie et on
+  // continue plus bas pour créer automatiquement un nouvel invité.
+  res.clearCookie("gomoku_guest", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/"
+  });
+} else {
+  return res.json({
+    success: true,
+    guestId: result.rows[0].id,
+    playerName: result.rows[0].display_name
+  });
+}
+  }
+    
 
     // Créer un nouvel invité
     const guestToken = guestCrypto
@@ -2853,6 +2859,64 @@ socket.on(
     );
   }
 );
+
+// ===============================
+// ADMIN - RESET CHALLENGE DATA
+// ===============================
+
+socket.on("adminResetChallengeData", async () => {
+  try {
+    // Sécurité : seulement un admin connecté
+    if (!socket.isAdmin) {
+      socket.emit("adminError", {
+        message: "Admin access required."
+      });
+      return;
+    }
+
+    if (!pool) {
+      socket.emit("adminError", {
+        message: "PostgreSQL is not available."
+      });
+      return;
+    }
+
+    console.log("🔄 Admin Challenge reset started...");
+
+    // Supprimer toutes les statistiques Challenge
+    await pool.query(`
+      TRUNCATE TABLE
+        guest_challenge_stats
+      RESTART IDENTITY;
+    `);
+
+    console.log("✅ Challenge stats deleted from PostgreSQL.");
+
+    // Envoyer les classements vides à tous les joueurs
+    for (const level of [1, 2, 3, 4, 5]) {
+      await broadcastChallengeLeaderboard(level);
+    }
+
+    // Confirmer à l'admin
+    socket.emit("adminChallengeReset", {
+      message: "✅ All Challenge data has been reset."
+    });
+
+    console.log("✅ Admin Challenge reset completed.");
+
+  } catch (error) {
+    console.error(
+      "❌ Admin Challenge reset error:",
+      error.message
+    );
+
+    socket.emit("adminError", {
+      message:
+        "Challenge reset failed: " +
+        error.message
+    });
+  }
+});
 
 socket.on("getAvailableTournaments", () => {
   socket.emit(
