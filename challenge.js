@@ -800,7 +800,8 @@ function getStatsForLevel(level = getCurrentChallengeLevel()) {
       wins: 0,
       losses: 0,
       streak: 0,
-      bestStreak: 0
+      bestStreak: 0,
+      revision: 0
     };
   }
   return challengeData.levelStats[cleanLevel];
@@ -1168,6 +1169,28 @@ function registerChallengeSocketListeners() {
     saveChallengeData();
     renderLeaderboard();
   });
+  challengeSocket.on("challengeGlobalReset", () => {
+  console.log("♻️ Global Challenge reset received");
+
+  // Effacer toutes les données Challenge locales
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem("challengeLevel");
+  localStorage.removeItem("challengeResult");
+  localStorage.removeItem("challengePlayerId");
+  localStorage.removeItem("challengePlayerName");
+
+  VALID_LEVELS.forEach((level) => {
+    localStorage.removeItem(`gomokuChallengePending_${level}`);
+    localStorage.removeItem(`gomokuChallengeSynced_${level}`);
+    localStorage.removeItem(`gomokuChallengeConflict_${level}`);
+  });
+
+  // Repartir complètement au Level 1
+  localStorage.setItem("challengeLevel", "1");
+
+  // Recharger pour reconstruire Challenge à zéro
+  window.location.reload();
+});
 }
 
 async function fetchChallengeLeaderboardFromServer(level = getSelectedLeaderboardLevel()) {

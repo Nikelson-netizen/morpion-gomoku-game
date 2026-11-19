@@ -2890,6 +2890,10 @@ socket.on("adminResetChallengeData", async () => {
       RESTART IDENTITY;
     `);
 
+    io.emit("challengeGlobalReset", {
+  resetAt: Date.now()
+});
+
     console.log("✅ Challenge stats deleted from PostgreSQL.");
 
     // Envoyer les classements vides à tous les joueurs
