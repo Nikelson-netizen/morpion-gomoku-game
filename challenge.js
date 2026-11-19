@@ -668,7 +668,29 @@ if (conflictInfo?.concurrentChanges) {
   );
 }
 
-  return;
+  if (result.serverStats) {
+  const serverRevision = Number(result.serverStats.revision);
+
+  if (
+    Number.isSafeInteger(serverRevision) &&
+    serverRevision >= 0
+  ) {
+    const currentStats = getStatsForLevel(cleanLevel);
+
+    currentStats.revision = serverRevision;
+
+    saveChallengeData();
+
+    guestChallengeSaveAgain.add(cleanLevel);
+
+    console.log(
+      "🔄 Nouvelle révision PostgreSQL récupérée. Nouvelle tentative:",
+      serverRevision
+    );
+  }
+}
+
+return;
 }
 
     if (!response.ok || !result.success) {
@@ -1363,7 +1385,6 @@ saveChallengeData();
 saveGuestChallengeStats(resultLevel);
 
 syncCurrentPlayerToServer();
-syncPointsToServer(resultLevel);
   } catch (err) {
     console.error("Error reading challengeResult:", err);
     localStorage.removeItem("challengeResult");
@@ -1427,10 +1448,9 @@ function handleWin({ aiStarted = false, onlineGame = false, fastWin = false, aiL
 
 updateCurrentPlayerInLocalLeaderboard(level);
 
-  renderAll();
-  syncCurrentPlayerToServer();
-  syncPointsToServer(level);
-  saveGuestChallengeStats(level);
+renderAll();
+
+saveGuestChallengeStats(level);
 }
 
 function handleLoss({ onlineGame = false, aiLevel = null } = {}) {
@@ -1457,7 +1477,6 @@ function handleLoss({ onlineGame = false, aiLevel = null } = {}) {
   updateCurrentPlayerInLocalLeaderboard(level);
 
   renderAll();
-  syncPointsToServer(level);
   saveGuestChallengeStats(level);
 }
 
