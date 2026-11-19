@@ -738,6 +738,8 @@ console.log(
   cleanLevel
 );
 
+await fetchChallengeLeaderboardFromServer(cleanLevel);
+
   } catch (error) {
 
   // Signaler une sauvegarde non terminée
