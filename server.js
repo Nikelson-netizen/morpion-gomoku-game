@@ -33,26 +33,6 @@ if (pool) {
   console.log("DATABASE_URL not configured");
 }
 
-// RESET TEMPORAIRE COMPLET DU CHALLENGE
-if (pool && process.env.RESET_CHALLENGE === "YES") {
-  pool.query(`
-    TRUNCATE TABLE
-      guest_challenge_stats,
-      guest_players
-    RESTART IDENTITY CASCADE
-  `)
-    .then(() => {
-      console.log("✅ CHALLENGE COMPLÈTEMENT RÉINITIALISÉ");
-    })
-    .catch((err) => {
-      console.error("❌ RESET CHALLENGE:", err.message);
-    });
-}
-
-// VERSION DU RESET GLOBAL CHALLENGE
-const CHALLENGE_RESET_VERSION = 1;
-
-
 /* =========================
    GOMOKU GUEST DATABASE
 ========================= */
@@ -92,6 +72,34 @@ async function initializeGuestDatabase() {
     PRIMARY KEY (guest_id, level)
   )
 `);
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS challenge_system_state (
+    key TEXT PRIMARY KEY,
+    value BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )
+`);
+
+await pool.query(`
+  INSERT INTO challenge_system_state (
+    key,
+    value
+  )
+  VALUES (
+    'reset_version',
+    1
+  )
+  ON CONFLICT (key)
+  DO UPDATE SET
+    value = GREATEST(
+      challenge_system_state.value,
+      1
+    )
+`);
+
+console.log(
+  "✅ Challenge reset version table ready"
+);
 
 // Préparer la protection contre
 // les anciennes sauvegardes
@@ -127,17 +135,74 @@ console.log("✅ Guest Challenge stats table ready");
 
 initializeGuestDatabase();
 
+async function getChallengeResetVersion() {
+  if (!pool) {
+    return 0;
+  }
+
+  const result = await pool.query(`
+    SELECT value
+    FROM challenge_system_state
+    WHERE key = 'reset_version'
+  `);
+
+  return Number(
+    result.rows[0]?.value
+  ) || 0;
+}
+
+async function incrementChallengeResetVersion(
+  databaseClient = pool
+) {
+  const result =
+    await databaseClient.query(`
+      UPDATE challenge_system_state
+      SET
+        value = value + 1,
+        updated_at = NOW()
+      WHERE key = 'reset_version'
+      RETURNING value
+    `);
+
+  return Number(
+    result.rows[0]?.value
+  ) || 0;
+}
+
 const app = express();
 const server = http.createServer(app);
 
 app.use(express.json());
 
-app.get("/api/challenge/reset-version", (req, res) => {
-  res.json({
-    success: true,
-    version: CHALLENGE_RESET_VERSION
-  });
-});
+app.get(
+  "/api/challenge/reset-version",
+  async (req, res) => {
+    res.setHeader(
+      "Cache-Control",
+      "no-store"
+    );
+
+    try {
+      const version =
+        await getChallengeResetVersion();
+
+      return res.json({
+        success: true,
+        version
+      });
+    } catch (error) {
+      console.error(
+        "Challenge reset version error:",
+        error.message
+      );
+
+      return res.status(500).json({
+        success: false,
+        version: 0
+      });
+    }
+  }
+);
 const nodemailer = require("nodemailer");
 
 /* =========================
@@ -2863,64 +2928,202 @@ socket.on(
 // ===============================
 // ADMIN - RESET CHALLENGE DATA
 // ===============================
+// ===============================
+// ADMIN - RESET CHALLENGE DATA
+// ===============================
 
-socket.on("adminResetChallengeData", async () => {
-  try {
-    // Sécurité : seulement un admin connecté
+socket.on(
+  "adminResetChallengeData",
+  async () => {
     if (!socket.isAdmin) {
       socket.emit("adminError", {
-        message: "Admin access required."
+        message:
+          "Admin access required."
       });
+
       return;
     }
 
     if (!pool) {
       socket.emit("adminError", {
-        message: "PostgreSQL is not available."
+        message:
+          "PostgreSQL is not available."
       });
+
       return;
     }
 
-    console.log("🔄 Admin Challenge reset started...");
+    const client =
+      await pool.connect();
 
-    // Supprimer toutes les statistiques Challenge
-    await pool.query(`
-      TRUNCATE TABLE
-        guest_challenge_stats
-      RESTART IDENTITY;
-    `);
+    try {
+      console.log(
+        "🔄 Admin Challenge reset started..."
+      );
 
-    io.emit("challengeGlobalReset", {
-  resetAt: Date.now()
-});
+      /*
+       * Tout le reset PostgreSQL est fait
+       * dans une seule transaction.
+       */
+      await client.query("BEGIN");
 
-    console.log("✅ Challenge stats deleted from PostgreSQL.");
+      /*
+       * 1. Supprimer toutes les statistiques
+       * Challenge permanentes.
+       */
+      await client.query(`
+        TRUNCATE TABLE
+          guest_challenge_stats
+        RESTART IDENTITY
+      `);
 
-    // Envoyer les classements vides à tous les joueurs
-    for (const level of [1, 2, 3, 4, 5]) {
-      await broadcastChallengeLeaderboard(level);
-    }
+      /*
+       * 2. Effacer également les anciens noms
+       * Challenge du serveur.
+       *
+       * On garde les Guest ID afin que la session
+       * du joueur reste valide.
+       */
+      await client.query(`
+        UPDATE guest_players
+        SET
+          display_name = 'Guest',
+          updated_at = NOW()
+      `);
 
-    // Confirmer à l'admin
-    socket.emit("adminChallengeReset", {
-      message: "✅ All Challenge data has been reset."
-    });
+      /*
+       * 3. Augmenter la version permanente
+       * du reset.
+       */
+      const resetVersion =
+        await incrementChallengeResetVersion(
+          client
+        );
 
-    console.log("✅ Admin Challenge reset completed.");
+      await client.query("COMMIT");
 
-  } catch (error) {
-    console.error(
-      "❌ Admin Challenge reset error:",
-      error.message
-    );
+      console.log(
+        "✅ PostgreSQL Challenge data reset."
+      );
 
-    socket.emit("adminError", {
-      message:
-        "Challenge reset failed: " +
+      /*
+       * 4. Nettoyer également l'ancien
+       * leaderboard temporaire en mémoire.
+       */
+      VALID_LEVELS.forEach(
+        (level) => {
+          challengeLeaderboards[level] =
+            [];
+        }
+      );
+
+      /*
+       * 5. Nettoyer l'identité Challenge
+       * de tous les sockets déjà connectés.
+       *
+       * Aucun joueur n'a besoin de se
+       * déconnecter ou reconnecter.
+       */
+      for (
+        const connectedSocket
+        of io.sockets.sockets.values()
+      ) {
+        connectedSocket.challengePlayerId =
+          null;
+
+        connectedSocket.challengePlayerName =
+          null;
+
+        connectedSocket.challengeLevel =
+          null;
+      }
+
+      const resetAt =
+        Date.now();
+
+      /*
+       * 6. Informer IMMÉDIATEMENT tous
+       * les joueurs actuellement connectés.
+       */
+      io.emit(
+        "challengeGlobalReset",
+        {
+          version:
+            resetVersion,
+
+          resetVersion:
+            resetVersion,
+
+          resetAt
+        }
+      );
+
+      console.log(
+        `♻️ Challenge global reset broadcast • version ${resetVersion}`
+      );
+
+      /*
+       * 7. Envoyer les 5 classements vides.
+       *
+       * PostgreSQL est la source permanente.
+       */
+      for (
+        const level of VALID_LEVELS
+      ) {
+        await broadcastChallengeLeaderboard(
+          level
+        );
+      }
+
+      /*
+       * 8. Confirmation pour l'admin.
+       */
+      socket.emit(
+        "adminChallengeReset",
+        {
+          success: true,
+
+          version:
+            resetVersion,
+
+          resetAt,
+
+          message:
+            "✅ All Challenge data has been reset."
+        }
+      );
+
+      console.log(
+        `✅ Admin Challenge reset completed • version ${resetVersion}`
+      );
+
+    } catch (error) {
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {
+        // Rien à faire.
+      }
+
+      console.error(
+        "❌ Admin Challenge reset error:",
         error.message
-    });
+      );
+
+      socket.emit(
+        "adminError",
+        {
+          message:
+            "Challenge reset failed: " +
+            error.message
+        }
+      );
+    } finally {
+      client.release();
+    }
   }
-});
+);
 
 socket.on("getAvailableTournaments", () => {
   socket.emit(
