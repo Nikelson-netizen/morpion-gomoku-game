@@ -3000,7 +3000,7 @@ function handleLoss({
 
   if (!isRankedChallengeActive()) {
   console.log(
-    "🎮 Normal AI win • no Ranked Challenge points"
+    "🎮 Normal AI loss • no Ranked Challenge points"
   );
 
   return;
