@@ -2858,6 +2858,14 @@ function handleWin({
   fastWin = false,
   aiLevel = null
 } = {}) {
+
+  if (!isRankedChallengeActive()) {
+  console.log(
+    "🎮 Normal AI win • no Ranked Challenge points"
+  );
+
+  return;
+}
   const level =
     normalizeLevel(
       aiLevel ||
@@ -2989,6 +2997,14 @@ function handleLoss({
   onlineGame = false,
   aiLevel = null
 } = {}) {
+
+  if (!isRankedChallengeActive()) {
+  console.log(
+    "🎮 Normal AI win • no Ranked Challenge points"
+  );
+
+  return;
+}
   const level =
     normalizeLevel(
       aiLevel ||
@@ -3037,46 +3053,17 @@ function handleLoss({
   syncPointsToServer(level);
 }
 
-/* =========================
-   RANKED CHALLENGE STATE
-========================= */
 
 function isRankedChallengeActive() {
   /*
-   * Le flag est activé lorsque le joueur
-   * appuie sur Start Challenge.
+   * Seul le vrai Ranked Challenge
+   * peut modifier les points Challenge.
+   *
+   * Play vs AI ne doit jamais compter.
    */
-  if (
-    window.__rankedChallengeActive ===
-    true
-  ) {
-    return true;
-  }
-
-  /*
-   * Compatibilité avec une page qui utilise
-   * directement mode="challenge".
-   */
-  if (
-    pageModeSelect &&
-    pageModeSelect.value ===
-      "challenge"
-  ) {
-    return true;
-  }
-
-  /*
-   * Compatibilité avec un lien partagé :
-   * ?challenge=1
-   */
-  const params =
-    getChallengeParamsFromURL();
-
-  if (params.challenge) {
-    return true;
-  }
-
-  return false;
+  return (
+    window.__rankedChallengeActive === true
+  );
 }
 
 function updateRankedChallengeRestartVisibility() {
@@ -3637,6 +3624,45 @@ function bindChallengePageControls() {
 
   hydratePlayerNameIntoInput();
   renderAll();
+
+  if (!window.__playVsAiChallengeGuardBound) {
+  window.__playVsAiChallengeGuardBound = true;
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      const button =
+        event.target.closest("button");
+
+      if (!button) {
+        return;
+      }
+
+      const text =
+        String(
+          button.textContent || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      if (
+        text.includes("play vs ai")
+      ) {
+        window.__rankedChallengeActive =
+          false;
+
+        window.__challengeRoundApplied =
+          false;
+
+        updateRankedChallengeRestartVisibility();
+
+        console.log(
+          "🎮 Play vs AI • Ranked scoring disabled"
+        );
+      }
+    }
+  );
+}
 
   function saveFinalChallengeName() {
     if (!pagePlayerNameInput) {
