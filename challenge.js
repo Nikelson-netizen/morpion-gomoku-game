@@ -1697,45 +1697,139 @@ function renderLeaderboard() {
   leaderboardList.innerHTML = "";
 
   /*
-   * IMPORTANT :
-   * afficher uniquement le niveau
-   * sélectionné dans les boutons
-   * Level 1 / Level 2 / etc.
+   * GLOBAL LEADERBOARD
    *
-   * Avant, les 5 niveaux étaient mélangés,
-   * ce qui affichait Kelly plusieurs fois.
+   * Un seul joueur par ligne,
+   * même s'il possède des statistiques
+   * dans plusieurs niveaux.
    */
-  const selectedLevel =
-    getSelectedLeaderboardLevel();
+  const globalPlayers = new Map();
 
-  const levelBoard =
-    Array.isArray(
-      challengeData.leaderboards[
-        selectedLevel
-      ]
+  VALID_LEVELS.forEach((level) => {
+    const players = Array.isArray(
+      challengeData.leaderboards[level]
     )
-      ? challengeData.leaderboards[
-          selectedLevel
-        ]
+      ? challengeData.leaderboards[level]
       : [];
 
-  const sorted = [...levelBoard]
-    .filter(
-      (player) =>
-        player &&
-        player.name &&
-        String(player.name).trim() &&
-        player.name !== "Player"
-    )
-    .sort(
-      (a, b) =>
-        (Number(b.points) || 0) -
-        (Number(a.points) || 0)
-    );
+    players.forEach((player) => {
+      if (
+        !player ||
+        !player.name ||
+        !String(player.name).trim() ||
+        player.name === "Player"
+      ) {
+        return;
+      }
+
+      /*
+       * Utiliser playerId en priorité.
+       * Si absent, utiliser le nom.
+       */
+      const key =
+        player.playerId
+          ? `id:${player.playerId}`
+          : `name:${String(player.name)
+              .trim()
+              .toLowerCase()}`;
+
+      const existing =
+        globalPlayers.get(key);
+
+      const playerLevel =
+        Number(level) || 1;
+
+      const playerPoints =
+        Number(player.points) || 0;
+
+      if (!existing) {
+        globalPlayers.set(key, {
+          playerId:
+            player.playerId || null,
+
+          name:
+            player.name,
+
+          /*
+           * Les points du classement global
+           * sont additionnés entre les niveaux.
+           */
+          points:
+            playerPoints,
+
+          /*
+           * Afficher le niveau le plus élevé
+           * atteint par le joueur.
+           */
+          level:
+            playerLevel,
+
+          online:
+            !!player.online
+        });
+
+        return;
+      }
+
+      /*
+       * Même joueur trouvé dans un autre niveau :
+       * ne PAS créer une deuxième ligne.
+       */
+      existing.points +=
+        playerPoints;
+
+      existing.level =
+        Math.max(
+          Number(existing.level) || 1,
+          playerLevel
+        );
+
+      /*
+       * Si le joueur est connecté dans
+       * au moins un niveau, il est Online.
+       */
+      existing.online =
+        existing.online ||
+        !!player.online;
+
+      /*
+       * Garder le nom le plus récent.
+       */
+      if (player.name) {
+        existing.name =
+          player.name;
+      }
+    });
+  });
+
+  const sorted =
+    [...globalPlayers.values()]
+      .sort((a, b) => {
+        if (
+          b.points !==
+          a.points
+        ) {
+          return (
+            b.points -
+            a.points
+          );
+        }
+
+        /*
+         * En cas d'égalité de points,
+         * le niveau le plus élevé passe devant.
+         */
+        return (
+          Number(b.level) -
+          Number(a.level)
+        );
+      });
 
   if (!sorted.length) {
     leaderboardList.innerHTML =
-      `<div class="empty-text">No players yet in Level ${selectedLevel}</div>`;
+      `<div class="empty-text">
+        No players yet in the Global Leaderboard
+      </div>`;
 
     return;
   }
@@ -1773,13 +1867,13 @@ function renderLeaderboard() {
                   ? "Online"
                   : "Offline"
               }
-              • Level ${selectedLevel}
+              • Level ${player.level}
             </div>
           </div>
         </div>
 
         <div class="lb-points">
-          ${Number(player.points) || 0} pts
+          ${player.points} pts
         </div>
       `;
 
