@@ -2511,28 +2511,66 @@ function updateRankedChallengeRestartVisibility() {
     return;
   }
 
+  const buttonText =
+    String(pageResetButton.textContent || "")
+      .trim()
+      .toLowerCase();
+
+  const isPlayAgain =
+    buttonText.includes("play again");
+
+  /*
+   * Après la fin de partie :
+   * Play Again doit TOUJOURS apparaître.
+   */
+  if (isPlayAgain) {
+    pageResetButton.hidden = false;
+
+    pageResetButton.removeAttribute(
+      "aria-hidden"
+    );
+
+    pageResetButton.style.removeProperty(
+      "display"
+    );
+
+    return;
+  }
+
+  /*
+   * Pendant Ranked Challenge :
+   * cacher seulement Restart.
+   */
   if (isRankedChallengeActive()) {
-    /*
-     * Cacher uniquement le bouton Restart
-     * normal pendant Ranked Challenge.
-     *
-     * Le bouton Play Again de fin de partie
-     * n'est pas touché.
-     */
+    pageResetButton.hidden = true;
+
+    pageResetButton.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
     pageResetButton.style.setProperty(
       "display",
       "none",
       "important"
     );
 
-    pageResetButton.hidden = true;
-  } else {
-    pageResetButton.style.removeProperty(
-      "display"
-    );
-
-    pageResetButton.hidden = false;
+    return;
   }
+
+  /*
+   * Autres modes :
+   * fonctionnement normal.
+   */
+  pageResetButton.hidden = false;
+
+  pageResetButton.removeAttribute(
+    "aria-hidden"
+  );
+
+  pageResetButton.style.removeProperty(
+    "display"
+  );
 }
 
 /* =========================
@@ -3986,34 +4024,16 @@ if (isLocal || isAdmin) {
 if (pageResetButton) {
   const challengeRestartObserver =
     new MutationObserver(() => {
-      if (
-        isRankedChallengeActive() &&
-        (
-          !pageResetButton.hidden ||
-          pageResetButton.style.display !==
-            "none"
-        )
-      ) {
-        pageResetButton.hidden =
-          true;
-
-        pageResetButton.setAttribute(
-          "aria-hidden",
-          "true"
-        );
-
-        pageResetButton.style.setProperty(
-          "display",
-          "none",
-          "important"
-        );
-      }
+      updateRankedChallengeRestartVisibility();
     });
 
   challengeRestartObserver.observe(
     pageResetButton,
     {
       attributes: true,
+      childList: true,
+      characterData: true,
+      subtree: true,
       attributeFilter: [
         "style",
         "class",
