@@ -1690,30 +1690,41 @@ function ensureLeaderboardTabs() {
 }
 
 function renderLeaderboard() {
-  if (!leaderboardList) return;
+  if (!leaderboardList) {
+    return;
+  }
 
   leaderboardList.innerHTML = "";
 
-  const levelBoard =
-    VALID_LEVELS.flatMap((level) => {
-      const players = Array.isArray(
-        challengeData.leaderboards[level]
-      )
-        ? challengeData.leaderboards[level]
-        : [];
+  /*
+   * IMPORTANT :
+   * afficher uniquement le niveau
+   * sélectionné dans les boutons
+   * Level 1 / Level 2 / etc.
+   *
+   * Avant, les 5 niveaux étaient mélangés,
+   * ce qui affichait Kelly plusieurs fois.
+   */
+  const selectedLevel =
+    getSelectedLeaderboardLevel();
 
-      return players.map((player) => ({
-        ...player,
-        level: String(level)
-      }));
-    });
+  const levelBoard =
+    Array.isArray(
+      challengeData.leaderboards[
+        selectedLevel
+      ]
+    )
+      ? challengeData.leaderboards[
+          selectedLevel
+        ]
+      : [];
 
   const sorted = [...levelBoard]
     .filter(
       (player) =>
         player &&
         player.name &&
-        player.name.trim() &&
+        String(player.name).trim() &&
         player.name !== "Player"
     )
     .sort(
@@ -1724,34 +1735,59 @@ function renderLeaderboard() {
 
   if (!sorted.length) {
     leaderboardList.innerHTML =
-      `<div class="empty-text">No players yet in the Global Leaderboard</div>`;
+      `<div class="empty-text">No players yet in Level ${selectedLevel}</div>`;
 
     return;
   }
 
-  sorted.forEach((player, index) => {
-    const item =
-      document.createElement("div");
+  sorted.forEach(
+    (player, index) => {
+      const item =
+        document.createElement(
+          "div"
+        );
 
-    item.className =
-      "leaderboard-item";
+      item.className =
+        "leaderboard-item";
 
-    item.innerHTML = `
-      <div class="lb-left">
-        <div class="rank-badge">${index + 1}</div>
-        <div>
-          <div class="lb-name">${player.name}</div>
-          <div class="lb-sub">
-            <span class="dot ${player.online ? "green" : "red"}"></span>
-            ${player.online ? "Online" : "Offline"} • Level ${player.level}
+      item.innerHTML = `
+        <div class="lb-left">
+          <div class="rank-badge">
+            ${index + 1}
+          </div>
+
+          <div>
+            <div class="lb-name">
+              ${player.name}
+            </div>
+
+            <div class="lb-sub">
+              <span class="dot ${
+                player.online
+                  ? "green"
+                  : "red"
+              }"></span>
+
+              ${
+                player.online
+                  ? "Online"
+                  : "Offline"
+              }
+              • Level ${selectedLevel}
+            </div>
           </div>
         </div>
-      </div>
-      <div class="lb-points">${Number(player.points) || 0} pts</div>
-    `;
 
-    leaderboardList.appendChild(item);
-  });
+        <div class="lb-points">
+          ${Number(player.points) || 0} pts
+        </div>
+      `;
+
+      leaderboardList.appendChild(
+        item
+      );
+    }
+  );
 }
 
 function renderHistory() {
@@ -1790,6 +1826,9 @@ function renderAll() {
   renderLeaderboard();
   renderHistory();
   ensureLeaderboardTabs();
+
+  updateRankedChallengeRestartVisibility();
+
   saveChallengeData();
 }
 
@@ -2467,6 +2506,35 @@ function isRankedChallengeActive() {
   return false;
 }
 
+function updateRankedChallengeRestartVisibility() {
+  if (!pageResetButton) {
+    return;
+  }
+
+  if (isRankedChallengeActive()) {
+    /*
+     * Cacher uniquement le bouton Restart
+     * normal pendant Ranked Challenge.
+     *
+     * Le bouton Play Again de fin de partie
+     * n'est pas touché.
+     */
+    pageResetButton.style.setProperty(
+      "display",
+      "none",
+      "important"
+    );
+
+    pageResetButton.hidden = true;
+  } else {
+    pageResetButton.style.removeProperty(
+      "display"
+    );
+
+    pageResetButton.hidden = false;
+  }
+}
+
 /* =========================
    ROUND PROTECTION
 ========================= */
@@ -2635,6 +2703,7 @@ function startChallenge() {
   ) {
     resetGame();
   }
+  updateRankedChallengeRestartVisibility();
 }
 
 /* =========================
@@ -2832,10 +2901,29 @@ function patchChallengeGameSync() {
         }
       }
 
-      return originalShowWinner.apply(
-        this,
-        arguments
-      );
+      const originalResult =
+  originalShowWinner.apply(
+    this,
+    arguments
+  );
+
+/*
+ * script.js peut afficher Restart
+ * pendant showWinner().
+ *
+ * On le recache immédiatement.
+ */
+updateRankedChallengeRestartVisibility();
+
+setTimeout(() => {
+  updateRankedChallengeRestartVisibility();
+}, 0);
+
+setTimeout(() => {
+  updateRankedChallengeRestartVisibility();
+}, 300);
+
+return originalResult;
     };
 }
 
@@ -2870,34 +2958,33 @@ function patchChallengeRestart() {
     window.resetGame;
 
   window.resetGame =
-    function patchedChallengeResetGame() {
-      /*
-       * IMPORTANT :
-       * Restart ne doit JAMAIS :
-       *
-       * - remettre les points à zéro,
-       * - changer le nom,
-       * - effacer PostgreSQL,
-       * - recompter l'ancienne partie.
-       *
-       * Il prépare seulement une nouvelle manche.
-       */
+  function patchedChallengeResetGame() {
+    /*
+     * Une nouvelle partie Ranked
+     * peut commencer sans recompter
+     * l'ancienne partie.
+     */
+    localStorage.removeItem(
+      "challengeResult"
+    );
 
-      localStorage.removeItem(
-        "challengeResult"
-      );
+    resetRoundSyncFlag();
 
-      resetRoundSyncFlag();
-
-      return originalResetGame.apply(
+    const result =
+      originalResetGame.apply(
         this,
         arguments
       );
-    };
 
-  console.log(
-    "✅ Ranked Challenge Restart protection active"
-  );
+    /*
+     * Même si resetGame() essaie
+     * d'afficher Restart,
+     * Ranked Challenge le cache.
+     */
+    updateRankedChallengeRestartVisibility();
+
+    return result;
+  };
 }
 
 /* =========================
@@ -3894,6 +3981,46 @@ if (isLocal || isAdmin) {
       element.style.display =
         "block";
     });
+}
+
+if (pageResetButton) {
+  const challengeRestartObserver =
+    new MutationObserver(() => {
+      if (
+        isRankedChallengeActive() &&
+        (
+          !pageResetButton.hidden ||
+          pageResetButton.style.display !==
+            "none"
+        )
+      ) {
+        pageResetButton.hidden =
+          true;
+
+        pageResetButton.setAttribute(
+          "aria-hidden",
+          "true"
+        );
+
+        pageResetButton.style.setProperty(
+          "display",
+          "none",
+          "important"
+        );
+      }
+    });
+
+  challengeRestartObserver.observe(
+    pageResetButton,
+    {
+      attributes: true,
+      attributeFilter: [
+        "style",
+        "class",
+        "hidden"
+      ]
+    }
+  );
 }
 
 /* =========================
