@@ -2126,30 +2126,107 @@ function getChallengeVictoryMotivation(
 
 function openLeaderboardTemporarily() {
   if (!leaderboardList) {
-    return;
-  }
-
-  const leaderboardCard =
-    leaderboardList.closest(
-      ".leaderboard-card"
-    ) ||
-    leaderboardList.closest(
-      ".collapsible-card"
-    );
-
-  if (!leaderboardCard) {
     console.warn(
-      "Leaderboard card not found."
+      "Leaderboard list not found."
     );
     return;
   }
 
   /*
-   * Afficher le leaderboard
+   * Trouver automatiquement la carte
+   * qui contient le titre du leaderboard.
+   */
+  let leaderboardCard =
+    leaderboardList;
+
+  let current =
+    leaderboardList.parentElement;
+
+  let attempts = 0;
+
+  while (
+    current &&
+    attempts < 5
+  ) {
+    if (
+      String(
+        current.textContent || ""
+      ).includes(
+        "Challenge Leaderboard"
+      )
+    ) {
+      leaderboardCard =
+        current;
+      break;
+    }
+
+    current =
+      current.parentElement;
+
+    attempts += 1;
+  }
+
+  /*
+   * Sauvegarder l'état actuel
+   * pour pouvoir le restaurer.
+   */
+  const oldCardStyle =
+    leaderboardCard.getAttribute(
+      "style"
+    );
+
+  const oldListStyle =
+    leaderboardList.getAttribute(
+      "style"
+    );
+
+  const oldCardHidden =
+    leaderboardCard.hidden;
+
+  const oldListHidden =
+    leaderboardList.hidden;
+
+  /*
+   * Forcer temporairement
+   * l'affichage du leaderboard.
    */
   leaderboardCard.hidden = false;
-  leaderboardCard.style.removeProperty(
-    "display"
+  leaderboardList.hidden = false;
+
+  leaderboardCard.style.setProperty(
+    "display",
+    "block",
+    "important"
+  );
+
+  leaderboardCard.style.setProperty(
+    "visibility",
+    "visible",
+    "important"
+  );
+
+  leaderboardCard.style.setProperty(
+    "opacity",
+    "1",
+    "important"
+  );
+
+  leaderboardCard.style.setProperty(
+    "max-height",
+    "none",
+    "important"
+  );
+
+  leaderboardCard.style.setProperty(
+    "overflow",
+    "visible",
+    "important"
+  );
+
+  leaderboardList.style.setProperty(
+    "display",
+    "block",
+    "important"
   );
 
   leaderboardCard.classList.add(
@@ -2157,22 +2234,22 @@ function openLeaderboardTemporarily() {
   );
 
   /*
-   * Descendre doucement
-   * vers le classement
+   * Aller automatiquement
+   * vers le leaderboard.
    */
   setTimeout(() => {
     leaderboardCard.scrollIntoView({
       behavior: "smooth",
       block: "center"
     });
-  }, 150);
+  }, 200);
 
   clearTimeout(
     window.__challengeLeaderboardCloseTimer
   );
 
   /*
-   * Refermer après 5 secondes
+   * Restaurer son état après 5 secondes.
    */
   window.__challengeLeaderboardCloseTimer =
     setTimeout(() => {
@@ -2180,7 +2257,33 @@ function openLeaderboardTemporarily() {
         "open"
       );
 
-      leaderboardCard.hidden = true;
+      leaderboardCard.hidden =
+        oldCardHidden;
+
+      leaderboardList.hidden =
+        oldListHidden;
+
+      if (oldCardStyle === null) {
+        leaderboardCard.removeAttribute(
+          "style"
+        );
+      } else {
+        leaderboardCard.setAttribute(
+          "style",
+          oldCardStyle
+        );
+      }
+
+      if (oldListStyle === null) {
+        leaderboardList.removeAttribute(
+          "style"
+        );
+      } else {
+        leaderboardList.setAttribute(
+          "style",
+          oldListStyle
+        );
+      }
     }, 5000);
 }
 
