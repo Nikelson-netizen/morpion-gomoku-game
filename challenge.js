@@ -4027,18 +4027,21 @@ if (pageResetButton) {
       updateRankedChallengeRestartVisibility();
     });
 
+  /*
+   * On surveille seulement le changement
+   * de texte Restart <-> Play Again.
+   *
+   * IMPORTANT :
+   * ne pas surveiller style/hidden,
+   * sinon l'observer réagit à ses propres
+   * modifications.
+   */
   challengeRestartObserver.observe(
     pageResetButton,
     {
-      attributes: true,
       childList: true,
       characterData: true,
-      subtree: true,
-      attributeFilter: [
-        "style",
-        "class",
-        "hidden"
-      ]
+      subtree: true
     }
   );
 }
