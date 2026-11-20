@@ -1659,34 +1659,12 @@ function ensureLeaderboardTabs() {
       "leaderboardLevelTabs"
     );
 
-  if (!container) return;
+  if (!container) {
+    return;
+  }
 
   container.innerHTML = "";
-
-  VALID_LEVELS.forEach((level) => {
-    const btn =
-      document.createElement("button");
-
-    btn.type = "button";
-    btn.className =
-      "leaderboard-level-btn";
-
-    if (
-      getSelectedLeaderboardLevel() ===
-      level
-    ) {
-      btn.classList.add("active");
-    }
-
-    btn.textContent = `Level ${level}`;
-
-    btn.addEventListener("click", () => {
-      setSelectedLeaderboardLevel(level);
-      ensureLeaderboardTabs();
-    });
-
-    container.appendChild(btn);
-  });
+  container.style.display = "none";
 }
 
 function renderLeaderboard() {
