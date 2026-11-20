@@ -2061,7 +2061,7 @@ function getChallengeVictoryMotivation(
     return {
       emoji: "🔥",
       message:
-        "Belle victoire ! Continue à grimper dans le classement !"
+  "Great win! Keep climbing the leaderboard!"
     };
   }
 
@@ -2075,7 +2075,7 @@ function getChallengeVictoryMotivation(
     return {
       emoji: "👑",
       message:
-        "Tu es #1 ! Continue pour défendre ta première place !"
+  "You're #1! Keep going to defend your top spot!"
     };
   }
 
@@ -2110,18 +2110,18 @@ function getChallengeVictoryMotivation(
     );
 
   if (winsNeeded === 1) {
-    return {
-      emoji: "⚡",
-      message:
-        `Encore une victoire comme celle-ci pour dépasser ${playerAhead.name} !`
-    };
-  }
-
   return {
-    emoji: "🔥",
+    emoji: "⚡",
     message:
-      `Encore ${winsNeeded} victoires comme celle-ci pour dépasser ${playerAhead.name} !`
+      `Just one more win like this to pass ${playerAhead.name}!`
   };
+}
+
+return {
+  emoji: "🔥",
+  message:
+    `Only ${winsNeeded} more wins like this to pass ${playerAhead.name}!`
+};
 }
 
 function openLeaderboardTemporarily() {
