@@ -1912,6 +1912,424 @@ function renderAll() {
 }
 
 /* =========================
+   CHALLENGE MOTIVATION
+========================= */
+
+function getGlobalChallengeRanking() {
+  const globalPlayers = new Map();
+
+  VALID_LEVELS.forEach((level) => {
+    const players = Array.isArray(
+      challengeData.leaderboards[level]
+    )
+      ? challengeData.leaderboards[level]
+      : [];
+
+    players.forEach((player) => {
+      if (
+        !player ||
+        !player.name ||
+        !String(player.name).trim() ||
+        player.name === "Player"
+      ) {
+        return;
+      }
+
+      const cleanName =
+        String(player.name).trim();
+
+      const playerId =
+        String(
+          player.playerId || ""
+        ).trim();
+
+      /*
+       * Utiliser l'identité serveur si possible.
+       */
+      const key = playerId
+        ? `id:${playerId}`
+        : `name:${cleanName.toLowerCase()}`;
+
+      const existing =
+        globalPlayers.get(key);
+
+      const points =
+        Number(player.points) || 0;
+
+      const playerLevel =
+        Number(level) || 1;
+
+      if (!existing) {
+        globalPlayers.set(key, {
+          playerId:
+            playerId || null,
+
+          name:
+            cleanName,
+
+          points,
+
+          level:
+            playerLevel,
+
+          online:
+            !!player.online
+        });
+
+        return;
+      }
+
+      /*
+       * Points globaux =
+       * addition des points des niveaux.
+       */
+      existing.points += points;
+
+      /*
+       * Afficher le niveau le plus élevé.
+       */
+      existing.level =
+        Math.max(
+          Number(existing.level) || 1,
+          playerLevel
+        );
+
+      existing.online =
+        existing.online ||
+        !!player.online;
+    });
+  });
+
+  return [...globalPlayers.values()]
+    .sort((a, b) => {
+      if (b.points !== a.points) {
+        return b.points - a.points;
+      }
+
+      return (
+        Number(b.level) -
+        Number(a.level)
+      );
+    });
+}
+
+function getChallengeVictoryMotivation(
+  pointsWon
+) {
+  const ranking =
+    getGlobalChallengeRanking();
+
+  const currentName =
+    String(
+      challengeData.playerName || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const serverPlayerId =
+    typeof getChallengeServerPlayerId ===
+      "function"
+      ? getChallengeServerPlayerId()
+      : "";
+
+  /*
+   * Chercher le joueur actuel.
+   *
+   * ID serveur en priorité,
+   * nom en sécurité supplémentaire.
+   */
+  const currentIndex =
+    ranking.findIndex(
+      (player) =>
+        (
+          serverPlayerId &&
+          String(
+            player.playerId || ""
+          ) === serverPlayerId
+        ) ||
+        String(player.name || "")
+          .trim()
+          .toLowerCase() ===
+          currentName
+    );
+
+  /*
+   * Le classement n'est peut-être
+   * pas encore synchronisé.
+   */
+  if (currentIndex < 0) {
+    return {
+      emoji: "🔥",
+      message:
+        "Belle victoire ! Continue à grimper dans le classement !"
+    };
+  }
+
+  const currentPlayer =
+    ranking[currentIndex];
+
+  /*
+   * Déjà premier.
+   */
+  if (currentIndex === 0) {
+    return {
+      emoji: "👑",
+      message:
+        "Tu es #1 ! Continue pour défendre ta première place !"
+    };
+  }
+
+  const playerAhead =
+    ranking[currentIndex - 1];
+
+  /*
+   * +1 car il faut réellement dépasser,
+   * pas seulement égaler.
+   */
+  const pointsNeeded =
+    Math.max(
+      1,
+      playerAhead.points -
+        currentPlayer.points +
+        1
+    );
+
+  const safePointsWon =
+    Math.max(
+      1,
+      Number(pointsWon) || 20
+    );
+
+  const winsNeeded =
+    Math.max(
+      1,
+      Math.ceil(
+        pointsNeeded /
+          safePointsWon
+      )
+    );
+
+  if (winsNeeded === 1) {
+    return {
+      emoji: "⚡",
+      message:
+        `Encore une victoire comme celle-ci pour dépasser ${playerAhead.name} !`
+    };
+  }
+
+  return {
+    emoji: "🔥",
+    message:
+      `Encore ${winsNeeded} victoires comme celle-ci pour dépasser ${playerAhead.name} !`
+  };
+}
+
+function openLeaderboardTemporarily() {
+  if (!leaderboardList) {
+    return;
+  }
+
+  const leaderboardCard =
+    leaderboardList.closest(
+      ".leaderboard-card"
+    ) ||
+    leaderboardList.closest(
+      ".collapsible-card"
+    );
+
+  if (!leaderboardCard) {
+    console.warn(
+      "Leaderboard card not found."
+    );
+    return;
+  }
+
+  /*
+   * Afficher le leaderboard
+   */
+  leaderboardCard.hidden = false;
+  leaderboardCard.style.removeProperty(
+    "display"
+  );
+
+  leaderboardCard.classList.add(
+    "open"
+  );
+
+  /*
+   * Descendre doucement
+   * vers le classement
+   */
+  setTimeout(() => {
+    leaderboardCard.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+  }, 150);
+
+  clearTimeout(
+    window.__challengeLeaderboardCloseTimer
+  );
+
+  /*
+   * Refermer après 5 secondes
+   */
+  window.__challengeLeaderboardCloseTimer =
+    setTimeout(() => {
+      leaderboardCard.classList.remove(
+        "open"
+      );
+
+      leaderboardCard.hidden = true;
+    }, 5000);
+}
+
+function showChallengeLevelUpNotice(newLevel) {
+  const oldNotice =
+    document.getElementById(
+      "challengeLevelUpNotice"
+    );
+
+  if (oldNotice) {
+    oldNotice.remove();
+  }
+
+  const notice =
+    document.createElement("div");
+
+  notice.id =
+    "challengeLevelUpNotice";
+
+  notice.innerHTML = `
+    🏆 Niveau ${newLevel} débloqué ! 🚀
+    <br>
+    <span style="
+      font-size:14px;
+      font-weight:500;
+    ">
+      L'IA devient plus difficile.
+    </span>
+  `;
+
+  Object.assign(
+    notice.style,
+    {
+      position: "fixed",
+      left: "50%",
+      top: "20px",
+      transform: "translateX(-50%)",
+      zIndex: "99999",
+      width: "90%",
+      maxWidth: "420px",
+      padding: "14px 18px",
+      borderRadius: "14px",
+      background: "rgba(17,24,39,0.96)",
+      color: "#ffffff",
+      fontSize: "17px",
+      fontWeight: "700",
+      textAlign: "center",
+      boxShadow:
+        "0 8px 30px rgba(0,0,0,0.30)"
+    }
+  );
+
+  document.body.appendChild(
+    notice
+  );
+
+  setTimeout(() => {
+    if (notice.isConnected) {
+      notice.remove();
+    }
+  }, 2500);
+}
+
+function showChallengeMotivation(
+  pointsWon
+) {
+  /*
+   * Retirer un ancien message
+   * s'il est encore affiché.
+   */
+  const oldMessage =
+    document.getElementById(
+      "challengeMotivationToast"
+    );
+
+  if (oldMessage) {
+    oldMessage.remove();
+  }
+
+  const motivation =
+    getChallengeVictoryMotivation(
+      pointsWon
+    );
+
+  const toast =
+    document.createElement("div");
+
+  toast.id =
+    "challengeMotivationToast";
+
+  toast.textContent =
+    `${motivation.emoji} ${motivation.message}`;
+
+  /*
+   * Aucun changement HTML/CSS requis.
+   * Le message est créé directement
+   * par JavaScript.
+   */
+  Object.assign(
+    toast.style,
+    {
+      position: "fixed",
+      left: "50%",
+      top: "80px",
+      transform:
+        "translateX(-50%)",
+      zIndex: "99999",
+      maxWidth: "90%",
+      padding:
+        "14px 20px",
+      borderRadius:
+        "14px",
+      background:
+        "rgba(17, 24, 39, 0.95)",
+      color:
+        "#ffffff",
+      fontSize:
+        "16px",
+      fontWeight:
+        "700",
+      textAlign:
+        "center",
+      boxShadow:
+        "0 8px 30px rgba(0,0,0,0.25)"
+    }
+  );
+
+  document.body.appendChild(
+    toast
+  );
+
+  /*
+   * Ouvrir le classement en même temps.
+   */
+  setTimeout(() => {
+    openLeaderboardTemporarily();
+  }, 200);
+
+  /*
+   * Faire disparaître le message.
+   */
+  setTimeout(() => {
+    if (toast.isConnected) {
+      toast.remove();
+    }
+  }, 4500);
+}
+
+/* =========================
    LEADERBOARD SERVER SYNC
 ========================= */
 
@@ -2394,6 +2812,8 @@ function handleWin({
   saveChallengeData();
   renderAll();
 
+  showChallengeMotivation(gain);
+
   /*
    * Sauvegarder le niveau sur lequel
    * la victoire vient réellement d'être gagnée,
@@ -2451,41 +2871,15 @@ function handleWin({
       );
     }
 
-    setTimeout(() => {
-      alert(
-        `🏆 Félicitations ! Niveau ${nextLevel} débloqué ! 🚀\nL'IA devient plus difficile.`
-      );
-    }, 300);
+    showChallengeLevelUpNotice(nextLevel);
 
     return;
   }
 
   if (levelProgress.maxLevel) {
-    setTimeout(() => {
-      alert(
-        `👑 Victoire au niveau 5 ! +${gain} points 🔥\nContinue pour monter dans le classement général.`
-      );
-    }, 300);
+  return;
+}
 
-    return;
-  }
-
-  const remaining =
-    Math.max(
-      0,
-      Number(
-        levelProgress.winsNeeded
-      ) -
-        Number(
-          levelProgress.wins
-        )
-    );
-
-  setTimeout(() => {
-    alert(
-      `🎉 Victoire ! ${levelProgress.wins}/${levelProgress.winsNeeded} victoires — encore ${remaining} pour débloquer le niveau ${Number(level) + 1} 🔥🤖`
-    );
-  }, 300);
 }
 
 function handleLoss({
