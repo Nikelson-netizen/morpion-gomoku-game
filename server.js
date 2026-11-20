@@ -796,11 +796,44 @@ function getAllChallengeLeaderboardViews() {
   return result;
 }
 
+function isChallengePlayerOnline(
+  playerId,
+  level
+) {
+  const cleanPlayerId =
+    String(playerId || "").trim();
+
+  const cleanLevel =
+    normalizeLevel(level);
+
+  if (!cleanPlayerId) {
+    return false;
+  }
+
+  for (
+    const connectedSocket
+    of io.sockets.sockets.values()
+  ) {
+    if (
+      String(
+        connectedSocket.challengePlayerId ||
+        ""
+      ).trim() === cleanPlayerId &&
+      normalizeLevel(
+        connectedSocket.challengeLevel
+      ) === cleanLevel
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /* =========================
    PERMANENT CHALLENGE LEADERBOARD
    POSTGRESQL
 ========================= */
-
 async function getChallengeLeaderboardFromDatabase(level) {
   if (!pool) {
     throw new Error("PostgreSQL unavailable");
@@ -832,14 +865,29 @@ async function getChallengeLeaderboardFromDatabase(level) {
     [Number(cleanLevel)]
   );
 
-  return result.rows.map((player, index) => ({
+  return result.rows.map(
+  (player, index) => ({
     rank: index + 1,
-    playerId: player.playerId,
-    name: player.name,
-    points: Number(player.points) || 0,
-    online: false,
-    level: cleanLevel
-  }));
+
+    playerId:
+      player.playerId,
+
+    name:
+      player.name,
+
+    points:
+      Number(player.points) || 0,
+
+    online:
+      isChallengePlayerOnline(
+        player.playerId,
+        cleanLevel
+      ),
+
+    level:
+      cleanLevel
+  })
+);
 }
 
 async function broadcastChallengeLeaderboard(level) {

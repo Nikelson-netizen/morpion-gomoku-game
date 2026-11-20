@@ -318,6 +318,13 @@ function saveChallengeData() {
   );
 }
 
+function getChallengeServerPlayerId() {
+  return String(
+    window.gomokuGuestId ||
+    getChallengePlayerId()
+  ).trim();
+}
+
 function buildFreshChallengeData() {
   return normalizeChallengeData({
     browserPlayerId: getChallengePlayerId(),
@@ -2036,8 +2043,7 @@ async function syncCurrentPlayerToServer() {
       challengeSocket.emit(
         "registerChallengePlayer",
         {
-          playerId:
-            getChallengePlayerId(),
+          playerId: getChallengeServerPlayerId(),
           name:
             playerName,
           level
@@ -2159,8 +2165,7 @@ function registerChallengeSocketListeners() {
         challengeSocket.emit(
           "registerChallengePlayer",
           {
-            playerId:
-              getChallengePlayerId(),
+            playerId: getChallengeServerPlayerId(),
             name,
             level:
               getCurrentChallengeLevel()
@@ -2436,8 +2441,7 @@ function handleWin({
       challengeSocket.emit(
         "registerChallengePlayer",
         {
-          playerId:
-            getChallengePlayerId(),
+          playerId: getChallengeServerPlayerId(),
 
           name,
 
@@ -2781,8 +2785,7 @@ function startChallenge() {
     challengeSocket.emit(
       "registerChallengePlayer",
       {
-        playerId:
-          getChallengePlayerId(),
+        playerId: getChallengeServerPlayerId(),
 
         name:
           typedName,
@@ -3204,8 +3207,7 @@ function bindChallengePageControls() {
       challengeSocket.emit(
         "registerChallengePlayer",
         {
-          playerId:
-            getChallengePlayerId(),
+          playerId: getChallengeServerPlayerId(),
 
           name,
 
@@ -3330,8 +3332,7 @@ function bindChallengePageControls() {
           challengeSocket.emit(
             "registerChallengePlayer",
             {
-              playerId:
-                getChallengePlayerId(),
+              playerId: getChallengeServerPlayerId(),
 
               name,
 
@@ -4275,8 +4276,7 @@ document.addEventListener(
       challengeSocket.emit(
         "registerChallengePlayer",
         {
-          playerId:
-            getChallengePlayerId(),
+          playerId: getChallengeServerPlayerId(),
 
           name:
             playerName,
