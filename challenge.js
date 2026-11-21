@@ -614,7 +614,7 @@ async function applyGlobalChallengeResetInPlace(
     }
 
     resetRoundSyncFlag();
-    window.__rankedChallengeActive = false;
+    setRankedChallengeActive(false);
 
     saveChallengeData();
 
@@ -1527,7 +1527,7 @@ function updateCurrentPlayerInLocalLeaderboard(
     : [];
 
   const playerId =
-    getChallengePlayerId();
+    getChallengeServerPlayerId();
 
   const existingIndex = board.findIndex(
     (player) =>
@@ -1683,7 +1683,7 @@ function renderLeaderboard() {
 
   /*
    * GLOBAL LEADERBOARD
-   *
+   *   *
    * Un seul joueur par ligne,
    * même s'il possède des statistiques
    * dans plusieurs niveaux.
@@ -2061,7 +2061,7 @@ function getChallengeVictoryMotivation(
     return {
       emoji: "🔥",
       message:
-  "Great win! Keep climbing the leaderboard!"
+        "Great win! Keep climbing the leaderboard!"
     };
   }
 
@@ -2075,7 +2075,7 @@ function getChallengeVictoryMotivation(
     return {
       emoji: "👑",
       message:
-  "You're #1! Keep going to defend your top spot!"
+        "You're #1! Keep going to defend your top spot!"
     };
   }
 
@@ -2110,18 +2110,18 @@ function getChallengeVictoryMotivation(
     );
 
   if (winsNeeded === 1) {
-  return {
-    emoji: "⚡",
-    message:
-      `Just one more win like this to pass ${playerAhead.name}!`
-  };
-}
+    return {
+      emoji: "⚡",
+      message:
+        `Just one more win like this to pass ${playerAhead.name}!`
+    };
+  }
 
-return {
-  emoji: "🔥",
-  message:
-    `Only ${winsNeeded} more wins like this to pass ${playerAhead.name}!`
-};
+  return {
+    emoji: "🔥",
+    message:
+      `Only ${winsNeeded} more wins like this to pass ${playerAhead.name}!`
+  };
 }
 
 function openLeaderboardTemporarily() {
@@ -2304,13 +2304,13 @@ function showChallengeLevelUpNotice(newLevel) {
     "challengeLevelUpNotice";
 
   notice.innerHTML = `
-    🏆 Niveau ${newLevel} débloqué ! 🚀
+    🏆 Level ${newLevel} Unlocked! 🚀
     <br>
     <span style="
       font-size:14px;
       font-weight:500;
     ">
-      L'IA devient plus difficile.
+      The AI is getting tougher.
     </span>
   `;
 
@@ -2535,6 +2535,10 @@ async function fetchAllLeaderboardsFromServer() {
 }
 
 async function syncCurrentPlayerToServer() {
+  if (!isRankedChallengeActive()) {
+    return;
+  }
+
   try {
     const playerName = String(
       challengeData.playerName ||
@@ -2586,6 +2590,10 @@ async function syncCurrentPlayerToServer() {
 function syncPointsToServer(
   level = getCurrentChallengeLevel()
 ) {
+  if (!isRankedChallengeActive()) {
+    return;
+  }
+
   const challengeSocket =
     getChallengeSocket();
 
@@ -2680,6 +2688,7 @@ function registerChallengeSocketListeners() {
       ).trim();
 
       if (
+        isRankedChallengeActive() &&
         name &&
         name !== "Player"
       ) {
@@ -2730,11 +2739,14 @@ function applyLastChallengeResult() {
     ).trim();
 
     /*
-     * Ne jamais appliquer un résultat
-     * provenant d'un autre mode.
+     * Compatibilité ancienne seulement :
+     * un résultat doit être explicitement Ranked.
+     *
+     * Un résultat Play vs AI ne doit JAMAIS
+     * modifier les statistiques Challenge.
      */
     if (
-      mode &&
+      !isRankedChallengeActive() ||
       mode !== "challenge"
     ) {
       return;
@@ -2860,12 +2872,13 @@ function handleWin({
 } = {}) {
 
   if (!isRankedChallengeActive()) {
-  console.log(
-    "🎮 Normal AI win • no Ranked Challenge points"
-  );
+    console.log(
+      "🎮 Normal AI win • no Ranked Challenge points"
+    );
 
-  return;
-}
+    return;
+  }
+
   const level =
     normalizeLevel(
       aiLevel ||
@@ -2972,7 +2985,8 @@ function handleWin({
       challengeSocket.emit(
         "registerChallengePlayer",
         {
-          playerId: getChallengeServerPlayerId(),
+          playerId:
+            getChallengeServerPlayerId(),
 
           name,
 
@@ -2982,15 +2996,16 @@ function handleWin({
       );
     }
 
-    showChallengeLevelUpNotice(nextLevel);
+    showChallengeLevelUpNotice(
+      nextLevel
+    );
 
     return;
   }
 
   if (levelProgress.maxLevel) {
-  return;
-}
-
+    return;
+  }
 }
 
 function handleLoss({
@@ -2999,12 +3014,13 @@ function handleLoss({
 } = {}) {
 
   if (!isRankedChallengeActive()) {
-  console.log(
-    "🎮 Normal AI loss • no Ranked Challenge points"
-  );
+    console.log(
+      "🎮 Normal AI loss • no Ranked Challenge points"
+    );
 
-  return;
-}
+    return;
+  }
+
   const level =
     normalizeLevel(
       aiLevel ||
@@ -3053,17 +3069,124 @@ function handleLoss({
   syncPointsToServer(level);
 }
 
+/* =========================
+   RANKED / PLAY VS AI STATE
+========================= */
 
 function isRankedChallengeActive() {
   /*
-   * Seul le vrai Ranked Challenge
-   * peut modifier les points Challenge.
+   * SOURCE UNIQUE DE VÉRITÉ.
    *
-   * Play vs AI ne doit jamais compter.
+   * Le Mode select, l'URL et Play vs AI
+   * ne décident plus directement du scoring.
    */
   return (
     window.__rankedChallengeActive === true
   );
+}
+
+function rememberNormalAiSettings() {
+  window.__normalAiSettingsBeforeRanked = {
+    level:
+      pageAiLevelSelect
+        ? String(
+            pageAiLevelSelect.value || ""
+          )
+        : "",
+
+    first:
+      pageFirstPlayerSelect
+        ? String(
+            pageFirstPlayerSelect.value || ""
+          )
+        : ""
+  };
+}
+
+function restoreNormalAiSettings() {
+  const saved =
+    window.__normalAiSettingsBeforeRanked;
+
+  if (!saved) {
+    return;
+  }
+
+  if (
+    pageAiLevelSelect &&
+    saved.level
+  ) {
+    pageAiLevelSelect.value =
+      saved.level;
+  }
+
+  if (
+    pageFirstPlayerSelect &&
+    saved.first
+  ) {
+    pageFirstPlayerSelect.value =
+      saved.first;
+  }
+}
+
+function releaseRankedChallengeRestartControl() {
+  if (!pageResetButton) {
+    return;
+  }
+
+  /*
+   * Ne retirer que le masquage qui a été
+   * posé par challenge.js.
+   *
+   * Ainsi Play vs AI garde le contrôle
+   * normal de son bouton Restart / Play Again.
+   */
+  if (
+    pageResetButton.dataset
+      .rankedChallengeHidden === "1"
+  ) {
+    pageResetButton.hidden = false;
+
+    pageResetButton.removeAttribute(
+      "aria-hidden"
+    );
+
+    if (
+      pageResetButton.style
+        .getPropertyValue("display") ===
+        "none" &&
+      pageResetButton.style
+        .getPropertyPriority("display") ===
+        "important"
+    ) {
+      pageResetButton.style.removeProperty(
+        "display"
+      );
+    }
+
+    delete pageResetButton.dataset
+      .rankedChallengeHidden;
+  }
+}
+
+function setRankedChallengeActive(active) {
+  const enabled =
+    active === true;
+
+  window.__rankedChallengeActive =
+    enabled;
+
+  if (!enabled) {
+    window.__rankedChallengeRoundFinished =
+      false;
+
+    resetRoundSyncFlag();
+
+    localStorage.removeItem(
+      "challengeResult"
+    );
+
+    releaseRankedChallengeRestartControl();
+  }
 }
 
 function updateRankedChallengeRestartVisibility() {
@@ -3071,65 +3194,54 @@ function updateRankedChallengeRestartVisibility() {
     return;
   }
 
-  const buttonText =
-    String(pageResetButton.textContent || "")
-      .trim()
-      .toLowerCase();
-
-  const isPlayAgain =
-    buttonText.includes("play again");
+  /*
+   * IMPORTANT :
+   * quand Ranked n'est pas actif,
+   * challenge.js ne contrôle PAS ce bouton.
+   */
+  if (!isRankedChallengeActive()) {
+    releaseRankedChallengeRestartControl();
+    return;
+  }
 
   /*
-   * Après la fin de partie :
-   * Play Again doit TOUJOURS apparaître.
+   * Fin d'une partie Ranked :
+   * laisser Play Again visible.
    */
-  if (isPlayAgain) {
+  if (
+    window.__rankedChallengeRoundFinished ===
+    true
+  ) {
+    releaseRankedChallengeRestartControl();
+
     pageResetButton.hidden = false;
 
     pageResetButton.removeAttribute(
       "aria-hidden"
     );
 
-    pageResetButton.style.removeProperty(
-      "display"
-    );
-
     return;
   }
 
   /*
-   * Pendant Ranked Challenge :
-   * cacher seulement Restart.
+   * Partie Ranked en cours :
+   * cacher Restart, même si un ancien
+   * Play vs AI avait laissé le bouton visible.
    */
-  if (isRankedChallengeActive()) {
-    pageResetButton.hidden = true;
+  pageResetButton.dataset
+    .rankedChallengeHidden = "1";
 
-    pageResetButton.setAttribute(
-      "aria-hidden",
-      "true"
-    );
+  pageResetButton.hidden = true;
 
-    pageResetButton.style.setProperty(
-      "display",
-      "none",
-      "important"
-    );
-
-    return;
-  }
-
-  /*
-   * Autres modes :
-   * fonctionnement normal.
-   */
-  pageResetButton.hidden = false;
-
-  pageResetButton.removeAttribute(
-    "aria-hidden"
+  pageResetButton.setAttribute(
+    "aria-hidden",
+    "true"
   );
 
-  pageResetButton.style.removeProperty(
-    "display"
+  pageResetButton.style.setProperty(
+    "display",
+    "none",
+    "important"
   );
 }
 
@@ -3176,6 +3288,14 @@ function startChallenge() {
     }
 
     return;
+  }
+
+  /*
+   * Sauvegarder les réglages Play vs AI
+   * avant d'entrer dans Ranked.
+   */
+  if (!isRankedChallengeActive()) {
+    rememberNormalAiSettings();
   }
 
   const oldName =
@@ -3243,8 +3363,10 @@ function startChallenge() {
    * elle permet de distinguer un Ranked Challenge
    * d'une simple partie contre l'IA.
    */
-  window.__rankedChallengeActive =
-    true;
+  setRankedChallengeActive(true);
+
+  window.__rankedChallengeRoundFinished =
+    false;
 
   /*
    * Nouvelle partie =
@@ -3269,7 +3391,8 @@ function startChallenge() {
     challengeSocket.emit(
       "registerChallengePlayer",
       {
-        playerId: getChallengeServerPlayerId(),
+        playerId:
+          getChallengeServerPlayerId(),
 
         name:
           typedName,
@@ -3300,6 +3423,7 @@ function startChallenge() {
   ) {
     resetGame();
   }
+
   updateRankedChallengeRestartVisibility();
 }
 
@@ -3332,14 +3456,6 @@ function patchChallengeGameSync() {
     function patchedShowWinner(
       winnerName
     ) {
-      /*
-       * Toujours afficher le résultat
-       * normal du jeu.
-       *
-       * Challenge ajoute seulement
-       * les statistiques Ranked.
-       */
-
       const rankedChallenge =
         isRankedChallengeActive();
 
@@ -3365,6 +3481,9 @@ function patchChallengeGameSync() {
         const aiStarted =
           firstPlayer === "ai";
 
+        const humanIsBlack =
+          firstPlayer !== "ai";
+
         const humanName = String(
           pagePlayerNameInput?.value
             ?.trim() ||
@@ -3383,67 +3502,96 @@ function patchChallengeGameSync() {
             ? window.currentWhiteName.trim()
             : "";
 
-        const cleanWinnerName =
-          String(
-            winnerName || ""
-          ).trim();
+        const normalizeWinnerName =
+          (value) =>
+            String(value || "")
+              .trim()
+              .toLowerCase();
 
-        /*
-         * Déterminer si l'humain a gagné.
-         */
-        const humanWon =
-          cleanWinnerName ===
-            humanName ||
-          (
-            humanName &&
-            currentBlackName ===
-              humanName &&
-            cleanWinnerName ===
-              currentBlackName
-          ) ||
-          (
-            humanName &&
-            currentWhiteName ===
-              humanName &&
-            cleanWinnerName ===
-              currentWhiteName
+        const cleanWinnerName =
+          normalizeWinnerName(
+            winnerName
+          );
+
+        const cleanHumanName =
+          normalizeWinnerName(
+            humanName
+          );
+
+        const cleanBlackName =
+          normalizeWinnerName(
+            currentBlackName
+          );
+
+        const cleanWhiteName =
+          normalizeWinnerName(
+            currentWhiteName
           );
 
         /*
-         * Déterminer si l'IA a gagné.
+         * Certains chemins de script.js
+         * peuvent envoyer le nom réel,
+         * "Black", "White" ou "AI".
+         *
+         * On accepte donc toutes les formes,
+         * en utilisant First pour savoir
+         * quelle couleur appartient à l'humain.
          */
-        const aiWon =
-          cleanWinnerName === "AI" ||
-          (
-            currentWhiteName &&
-            currentWhiteName !==
-              humanName &&
-            cleanWinnerName ===
-              currentWhiteName
-          ) ||
-          (
-            currentBlackName &&
-            currentBlackName !==
-              humanName &&
-            cleanWinnerName ===
-              currentBlackName
-          ) ||
-          cleanWinnerName ===
-            "White";
+        const humanAliases =
+          new Set(
+            [
+              cleanHumanName,
+              humanIsBlack
+                ? "black"
+                : "white",
+              humanIsBlack
+                ? cleanBlackName
+                : cleanWhiteName
+            ].filter(Boolean)
+          );
+
+        const aiAliases =
+          new Set(
+            [
+              "ai",
+              humanIsBlack
+                ? "white"
+                : "black",
+              humanIsBlack
+                ? cleanWhiteName
+                : cleanBlackName
+            ].filter(Boolean)
+          );
 
         /*
-         * IMPORTANT :
-         * marquer la partie AVANT de modifier
-         * les statistiques.
-         *
-         * Même si showWinner est appelé deux fois,
-         * les points ne seront ajoutés qu'une fois.
+         * Ne jamais considérer le nom humain
+         * comme un alias de l'IA.
          */
+        if (cleanHumanName) {
+          aiAliases.delete(
+            cleanHumanName
+          );
+        }
+
+        const humanWon =
+          humanAliases.has(
+            cleanWinnerName
+          );
+
+        const aiWon =
+          !humanWon &&
+          aiAliases.has(
+            cleanWinnerName
+          );
+
         if (
           humanWon ||
           aiWon
         ) {
           markChallengeRoundApplied();
+
+          window.__rankedChallengeRoundFinished =
+            true;
         }
 
         if (humanWon) {
@@ -3451,7 +3599,7 @@ function patchChallengeGameSync() {
             "🏆 Ranked Challenge victory",
             {
               winnerName:
-                cleanWinnerName,
+                winnerName,
               level:
                 currentAiLevel
             }
@@ -3469,7 +3617,7 @@ function patchChallengeGameSync() {
             "❌ Ranked Challenge defeat",
             {
               winnerName:
-                cleanWinnerName,
+                winnerName,
               level:
                 currentAiLevel
             }
@@ -3481,16 +3629,12 @@ function patchChallengeGameSync() {
               currentAiLevel
           });
         } else {
-          /*
-           * Si le nom reçu est inconnu,
-           * ne pas compter automatiquement.
-           */
           console.warn(
-            "⚠️ Challenge winner could not be identified:",
+            "⚠️ Ranked winner could not be identified:",
             {
-              winnerName:
-                cleanWinnerName,
+              winnerName,
               humanName,
+              firstPlayer,
               currentBlackName,
               currentWhiteName
             }
@@ -3499,28 +3643,33 @@ function patchChallengeGameSync() {
       }
 
       const originalResult =
-  originalShowWinner.apply(
-    this,
-    arguments
-  );
+        originalShowWinner.apply(
+          this,
+          arguments
+        );
 
-/*
- * script.js peut afficher Restart
- * pendant showWinner().
- *
- * On le recache immédiatement.
- */
-updateRankedChallengeRestartVisibility();
+      /*
+       * showWinner() normal peut modifier
+       * Restart / Play Again.
+       *
+       * Challenge n'intervient qu'en Ranked.
+       */
+      if (rankedChallenge) {
+        window.__rankedChallengeRoundFinished =
+          true;
 
-setTimeout(() => {
-  updateRankedChallengeRestartVisibility();
-}, 0);
+        updateRankedChallengeRestartVisibility();
 
-setTimeout(() => {
-  updateRankedChallengeRestartVisibility();
-}, 300);
+        setTimeout(() => {
+          updateRankedChallengeRestartVisibility();
+        }, 0);
 
-return originalResult;
+        setTimeout(() => {
+          updateRankedChallengeRestartVisibility();
+        }, 300);
+      }
+
+      return originalResult;
     };
 }
 
@@ -3529,12 +3678,6 @@ return originalResult;
 ========================= */
 
 function patchChallengeRestart() {
-  /*
-   * Le bouton Restart utilise normalement
-   * resetGame() dans script.js.
-   *
-   * On enveloppe cette fonction une seule fois.
-   */
   if (
     typeof window.resetGame !==
     "function"
@@ -3555,33 +3698,43 @@ function patchChallengeRestart() {
     window.resetGame;
 
   window.resetGame =
-  function patchedChallengeResetGame() {
-    /*
-     * Une nouvelle partie Ranked
-     * peut commencer sans recompter
-     * l'ancienne partie.
-     */
-    localStorage.removeItem(
-      "challengeResult"
-    );
+    function patchedChallengeResetGame() {
+      /*
+       * Play vs AI :
+       * laisser resetGame() fonctionner
+       * exactement comme avant.
+       */
+      if (!isRankedChallengeActive()) {
+        return originalResetGame.apply(
+          this,
+          arguments
+        );
+      }
 
-    resetRoundSyncFlag();
-
-    const result =
-      originalResetGame.apply(
-        this,
-        arguments
+      /*
+       * Ranked :
+       * nouvelle manche, aucun ancien résultat
+       * ne doit être recompté.
+       */
+      localStorage.removeItem(
+        "challengeResult"
       );
 
-    /*
-     * Même si resetGame() essaie
-     * d'afficher Restart,
-     * Ranked Challenge le cache.
-     */
-    updateRankedChallengeRestartVisibility();
+      resetRoundSyncFlag();
 
-    return result;
-  };
+      window.__rankedChallengeRoundFinished =
+        false;
+
+      const result =
+        originalResetGame.apply(
+          this,
+          arguments
+        );
+
+      updateRankedChallengeRestartVisibility();
+
+      return result;
+    };
 }
 
 /* =========================
@@ -3589,16 +3742,23 @@ function patchChallengeRestart() {
 ========================= */
 
 function prepareNextChallengeRound() {
+  /*
+   * Cette fonction appartient UNIQUEMENT
+   * au Ranked Challenge.
+   */
+  if (!isRankedChallengeActive()) {
+    return;
+  }
+
   localStorage.removeItem(
     "challengeResult"
   );
 
   resetRoundSyncFlag();
 
-  /*
-   * Le niveau actuel reste celui
-   * qui est déjà enregistré.
-   */
+  window.__rankedChallengeRoundFinished =
+    false;
+
   const level =
     getStoredChallengeAiLevel();
 
@@ -3606,6 +3766,8 @@ function prepareNextChallengeRound() {
     pageAiLevelSelect.value =
       level;
   }
+
+  updateRankedChallengeRestartVisibility();
 
   console.log(
     "▶️ New Ranked Challenge round ready:",
@@ -3622,50 +3784,69 @@ function bindChallengePageControls() {
     return;
   }
 
-  hydratePlayerNameIntoInput();
+  /*
+   * Sur la page Challenge séparée,
+   * il est normal d'hydrater les réglages Ranked.
+   *
+   * Sur la page intégrée, ne pas écraser
+   * les réglages normaux de Play vs AI.
+   */
+  if (isStandaloneChallengePage) {
+    hydratePlayerNameIntoInput();
+  }
+
   renderAll();
 
+  /*
+   * IMPORTANT :
+   * CAPTURE PHASE = Ranked est désactivé
+   * AVANT que le bouton Play vs AI
+   * n'exécute son propre resetGame().
+   */
   if (!window.__playVsAiChallengeGuardBound) {
-  window.__playVsAiChallengeGuardBound = true;
+    window.__playVsAiChallengeGuardBound =
+      true;
 
-  document.addEventListener(
-    "click",
-    (event) => {
-      const button =
-        event.target.closest("button");
+    document.addEventListener(
+      "click",
+      (event) => {
+        const button =
+          event.target.closest("button");
 
-      if (!button) {
-        return;
-      }
+        if (!button) {
+          return;
+        }
 
-      const text =
-        String(
-          button.textContent || ""
-        )
-          .trim()
-          .toLowerCase();
+        const text =
+          String(
+            button.textContent || ""
+          )
+            .trim()
+            .toLowerCase();
 
-      if (
-        text.includes("play vs ai")
-      ) {
-        window.__rankedChallengeActive =
-          false;
+        if (
+          text.includes("play vs ai")
+        ) {
+          setRankedChallengeActive(
+            false
+          );
 
-        window.__challengeRoundApplied =
-          false;
+          restoreNormalAiSettings();
 
-        updateRankedChallengeRestartVisibility();
-
-        console.log(
-          "🎮 Play vs AI • Ranked scoring disabled"
-        );
-      }
-    }
-  );
-}
+          console.log(
+            "🎮 Play vs AI • Ranked fully disabled"
+          );
+        }
+      },
+      true
+    );
+  }
 
   function saveFinalChallengeName() {
-    if (!pagePlayerNameInput) {
+    if (
+      !pagePlayerNameInput ||
+      !isRankedChallengeActive()
+    ) {
       return;
     }
 
@@ -3705,10 +3886,6 @@ function bindChallengePageControls() {
         "challengePlayerName"
       );
 
-      localStorage.removeItem(
-        "playerName"
-      );
-
       challengeData.playerName =
         "Player";
 
@@ -3730,7 +3907,8 @@ function bindChallengePageControls() {
       challengeSocket.emit(
         "registerChallengePlayer",
         {
-          playerId: getChallengeServerPlayerId(),
+          playerId:
+            getChallengeServerPlayerId(),
 
           name,
 
@@ -3753,6 +3931,10 @@ function bindChallengePageControls() {
     pagePlayerNameInput.addEventListener(
       "input",
       () => {
+        if (!isRankedChallengeActive()) {
+          return;
+        }
+
         const name =
           pagePlayerNameInput.value.trim();
 
@@ -3788,7 +3970,10 @@ function bindChallengePageControls() {
     pagePlayerNameInput.addEventListener(
       "keydown",
       (event) => {
-        if (event.key === "Enter") {
+        if (
+          event.key === "Enter" &&
+          isRankedChallengeActive()
+        ) {
           saveFinalChallengeName();
 
           pagePlayerNameInput.blur();
@@ -3802,18 +3987,24 @@ function bindChallengePageControls() {
   ========================= */
 
   if (pageAiLevelSelect) {
-    const storedLevel =
-      getStoredChallengeAiLevel();
+    if (isStandaloneChallengePage) {
+      pageAiLevelSelect.value =
+        getStoredChallengeAiLevel();
 
-    pageAiLevelSelect.value =
-      storedLevel;
-
-    pageAiLevelSelect.disabled =
-      false;
+      pageAiLevelSelect.disabled =
+        false;
+    }
 
     pageAiLevelSelect.addEventListener(
       "change",
       async () => {
+        /*
+         * Play vs AI garde son propre niveau.
+         */
+        if (!isRankedChallengeActive()) {
+          return;
+        }
+
         const cleanLevel =
           normalizeLevel(
             pageAiLevelSelect.value
@@ -3827,10 +4018,6 @@ function bindChallengePageControls() {
         challengeData.selectedLeaderboardLevel =
           cleanLevel;
 
-        /*
-         * Changer de niveau signifie
-         * préparer une nouvelle partie.
-         */
         prepareNextChallengeRound();
 
         saveChallengeData();
@@ -3855,7 +4042,8 @@ function bindChallengePageControls() {
           challengeSocket.emit(
             "registerChallengePlayer",
             {
-              playerId: getChallengeServerPlayerId(),
+              playerId:
+                getChallengeServerPlayerId(),
 
               name,
 
@@ -3873,12 +4061,21 @@ function bindChallengePageControls() {
   ========================= */
 
   if (pageFirstPlayerSelect) {
-    pageFirstPlayerSelect.value =
-      getStoredChallengeFirstPlayer();
+    if (isStandaloneChallengePage) {
+      pageFirstPlayerSelect.value =
+        getStoredChallengeFirstPlayer();
+    }
 
     pageFirstPlayerSelect.addEventListener(
       "change",
       () => {
+        /*
+         * Play vs AI garde son propre choix First.
+         */
+        if (!isRankedChallengeActive()) {
+          return;
+        }
+
         localStorage.setItem(
           "challengeFirstPlayer",
           pageFirstPlayerSelect.value
@@ -3890,35 +4087,62 @@ function bindChallengePageControls() {
   }
 
   /* =========================
-     NORMAL RESET / RESTART
+     NORMAL RESET / PLAY AGAIN
   ========================= */
 
   if (pageResetButton) {
     pageResetButton.addEventListener(
       "click",
       () => {
-        /*
-         * IMPORTANT :
-         * ce bouton ne touche jamais
-         * aux points Challenge.
-         */
+        if (!isRankedChallengeActive()) {
+          return;
+        }
+
         prepareNextChallengeRound();
       }
     );
   }
 
   /*
-   * Sur la page Challenge séparée,
-   * le jeu reste techniquement en mode AI.
+   * Changer complètement de mode
+   * désactive toujours Ranked.
    *
-   * Ranked Challenge est contrôlé
-   * par __rankedChallengeActive.
+   * Entrer dans "Challenge" n'active pas Ranked :
+   * seul le bouton Ranked Challenge le fait.
    */
+  if (pageModeSelect) {
+    pageModeSelect.addEventListener(
+      "change",
+      () => {
+        if (
+          pageModeSelect.value !==
+          "challenge"
+        ) {
+          setRankedChallengeActive(
+            false
+          );
+
+          if (
+            pageModeSelect.value ===
+            "ai"
+          ) {
+            restoreNormalAiSettings();
+          }
+        }
+      },
+      true
+    );
+  }
+
   if (
     isStandaloneChallengePage &&
     pageModeSelect
   ) {
     pageModeSelect.value = "ai";
+
+    setRankedChallengeActive(
+      true
+    );
   }
 }
 
@@ -4581,10 +4805,17 @@ if (
   );
 }
 
-if (urlParams.challenge) {
-  window.__rankedChallengeActive =
-    true;
+if (
+  urlParams.challenge ||
+  isStandaloneChallengePage
+) {
+  setRankedChallengeActive(true);
+} else {
+  setRankedChallengeActive(false);
 }
+
+window.__rankedChallengeRoundFinished =
+  false;
 
 renderAll();
 
@@ -4737,16 +4968,17 @@ document.addEventListener(
     }
 
     /*
-     * 4. Compatibilité avec un éventuel
-     * ancien challengeResult.
+     * 4. L'ancien système challengeResult
+     * n'est plus utilisé pour compter les points.
+     *
+     * Le patch showWinner() est maintenant
+     * l'unique source des résultats Ranked.
+     * Cela évite les doubles comptes et tout
+     * mélange avec Play vs AI.
      */
-    if (!globalResetApplied) {
-      applyLastChallengeResult();
-    } else {
-      localStorage.removeItem(
-        "challengeResult"
-      );
-    }
+    localStorage.removeItem(
+      "challengeResult"
+    );
 
     /*
      * 5. Activer les événements Socket.IO.
@@ -4789,6 +5021,7 @@ document.addEventListener(
 
     if (
       !globalResetApplied &&
+      isRankedChallengeActive() &&
       challengeSocket &&
       playerName &&
       playerName !== "Player"
@@ -4799,7 +5032,8 @@ document.addEventListener(
       challengeSocket.emit(
         "registerChallengePlayer",
         {
-          playerId: getChallengeServerPlayerId(),
+          playerId:
+            getChallengeServerPlayerId(),
 
           name:
             playerName,
@@ -4813,7 +5047,10 @@ document.addEventListener(
      * 9. Rafraîchir le classement
      * du joueur.
      */
-    if (!globalResetApplied) {
+    if (
+      !globalResetApplied &&
+      isRankedChallengeActive()
+    ) {
       await syncCurrentPlayerToServer();
     }
 
