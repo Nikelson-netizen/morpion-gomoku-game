@@ -950,6 +950,69 @@ if (total % 2 === 0) {
   status.textContent =
     `🎉 ${winnerName} wins the game! Score: ${currentBlackName} ${matchScore.black} - ${matchScore.white} ${currentWhiteName}`;
 
+    /*
+ * Secours direct pour Ranked Challenge.
+ *
+ * Même si le patch de challenge.js
+ * n'intercepte pas showWinner(),
+ * script.js transmet directement
+ * la victoire ou la défaite.
+ */
+const rankedChallengeResult =
+  modeSelect.value === "challenge" &&
+  document.getElementById(
+    "challengeType"
+  )?.value === "ranked";
+
+if (
+  rankedChallengeResult &&
+  window.__challengeRoundApplied !== true
+) {
+  window.__rankedChallengeActive =
+    true;
+
+  window.__challengeRoundApplied =
+    true;
+
+  window.__rankedChallengeRoundFinished =
+    true;
+
+  if (
+    winnerName === currentBlackName &&
+    typeof window.handleWin ===
+      "function"
+  ) {
+    console.log(
+      "🏆 Ranked Challenge victory DIRECT"
+    );
+
+    window.handleWin({
+      aiStarted:
+        firstPlayerSelect.value ===
+        "ai",
+
+      onlineGame: false,
+      fastWin: false,
+      aiLevel:
+        aiSelect.value
+    });
+  } else if (
+    winnerName === currentWhiteName &&
+    typeof window.handleLoss ===
+      "function"
+  ) {
+    console.log(
+      "❌ Ranked Challenge defeat DIRECT"
+    );
+
+    window.handleLoss({
+      onlineGame: false,
+      aiLevel:
+        aiSelect.value
+    });
+  }
+}
+
   resetButton.textContent = "Play Again";
 resetButton.classList.add("play-again");
 
@@ -3326,6 +3389,27 @@ function resetGame() {
 
   restorePlayAgainButtons();
 
+  /*
+   * Resynchroniser l'état Ranked
+   * à chaque nouvelle partie.
+   */
+  const rankedChallengeNow =
+    modeSelect.value === "challenge" &&
+    document.getElementById(
+      "challengeType"
+    )?.value === "ranked";
+
+  window.__rankedChallengeActive =
+    rankedChallengeNow;
+
+  if (rankedChallengeNow) {
+    window.__challengeRoundApplied =
+      false;
+
+    window.__rankedChallengeRoundFinished =
+      false;
+  }
+
   stopTournamentCountdown(true);
 
 if (tournamentTurnTimerValue) {
@@ -3567,9 +3651,29 @@ function selectChallengeType(type) {
   challengeTypeSelect.value = type;
   modeSelect.value = "challenge";
 
-  challengeSessionActive = type === "ranked";
+  challengeSessionActive =
+  type === "ranked";
 
-  const playerNameGroup = document.getElementById("playerNameGroup");
+/*
+ * IMPORTANT :
+ * script.js et challenge.js doivent
+ * utiliser exactement le même état Ranked.
+ */
+window.__rankedChallengeActive =
+  type === "ranked";
+
+if (type === "ranked") {
+  window.__challengeRoundApplied =
+    false;
+
+  window.__rankedChallengeRoundFinished =
+    false;
+}
+
+const playerNameGroup =
+  document.getElementById(
+    "playerNameGroup"
+  );
 
 if (playerNameGroup) {
   playerNameGroup.style.display =
