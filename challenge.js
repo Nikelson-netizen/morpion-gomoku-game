@@ -2124,7 +2124,35 @@ function getChallengeVictoryMotivation(
   };
 }
 
-function openLeaderboardTemporarily() {
+async function openLeaderboardTemporarily() {
+  const activeAd =
+  window.__gomokuInterstitialPromise;
+
+if (
+  activeAd &&
+  typeof activeAd.then === "function"
+) {
+  console.log(
+    "🏆 Leaderboard waiting for ad..."
+  );
+
+  try {
+    await activeAd;
+  } catch (error) {
+    console.warn(
+      "Ad wait failed:",
+      error
+    );
+  }
+
+  await new Promise((resolve) => {
+    setTimeout(resolve, 300);
+  });
+
+  console.log(
+    "🏆 Ad finished — opening leaderboard"
+  );
+}
   if (!leaderboardList) {
     console.warn(
       "Leaderboard list not found."
@@ -3194,40 +3222,41 @@ function updateRankedChallengeRestartVisibility() {
     return;
   }
 
-  /*
-   * IMPORTANT :
-   * quand Ranked n'est pas actif,
-   * challenge.js ne contrôle PAS ce bouton.
-   */
   if (!isRankedChallengeActive()) {
     releaseRankedChallengeRestartControl();
     return;
   }
 
-  /*
-   * Fin d'une partie Ranked :
-   * laisser Play Again visible.
-   */
-  if (
-    window.__rankedChallengeRoundFinished ===
-    true
-  ) {
-    releaseRankedChallengeRestartControl();
+  const buttonText =
+    String(pageResetButton.textContent || "")
+      .trim()
+      .toLowerCase();
 
+  const isPlayAgain =
+    buttonText.includes("play again");
+
+  /*
+   * En Ranked :
+   * Play Again peut apparaître après la partie.
+   * Restart reste toujours caché.
+   */
+  if (isPlayAgain) {
     pageResetButton.hidden = false;
 
     pageResetButton.removeAttribute(
       "aria-hidden"
     );
 
+    pageResetButton.style.removeProperty(
+      "display"
+    );
+
+    delete pageResetButton.dataset
+      .rankedChallengeHidden;
+
     return;
   }
 
-  /*
-   * Partie Ranked en cours :
-   * cacher Restart, même si un ancien
-   * Play vs AI avait laissé le bouton visible.
-   */
   pageResetButton.dataset
     .rankedChallengeHidden = "1";
 
@@ -3410,21 +3439,56 @@ function startChallenge() {
   syncCurrentPlayerToServer();
 
   /*
+ * Revalider le patch du résultat
+ * au moment exact où Ranked démarre.
+ */
+patchChallengeGameSync();
+
+bindRankedResultFallback();
+
+  /*
    * Lancer/réinitialiser la grille.
    */
   if (
-    typeof window.resetGame ===
-    "function"
-  ) {
-    window.resetGame();
-  } else if (
-    typeof resetGame ===
-    "function"
-  ) {
-    resetGame();
-  }
+  typeof window.resetGame ===
+  "function"
+) {
+  window.resetGame();
+} else if (
+  typeof resetGame ===
+  "function"
+) {
+  resetGame();
+}
 
-  updateRankedChallengeRestartVisibility();
+/*
+ * Après resetGame(), confirmer que
+ * cette partie reste bien Ranked.
+ */
+setRankedChallengeActive(true);
+
+window.__rankedChallengeRoundFinished =
+  false;
+
+resetRoundSyncFlag();
+
+/*
+ * Pendant une partie Ranked,
+ * Restart doit rester caché.
+ */
+updateRankedChallengeRestartVisibility();
+
+setTimeout(() => {
+  if (isRankedChallengeActive()) {
+    updateRankedChallengeRestartVisibility();
+  }
+}, 0);
+
+setTimeout(() => {
+  if (isRankedChallengeActive()) {
+    updateRankedChallengeRestartVisibility();
+  }
+}, 300);
 }
 
 /* =========================
@@ -3440,17 +3504,22 @@ function patchChallengeGameSync() {
     return;
   }
 
-  if (
-    window.__challengeShowWinnerPatched
-  ) {
-    return;
-  }
-
+  /*
+ * Vérifier la vraie fonction actuellement
+ * installée, pas seulement l'ancien flag.
+ */
+if (
+  window.showWinner.__challengeRankedPatched ===
+  true
+) {
   window.__challengeShowWinnerPatched =
     true;
 
-  const originalShowWinner =
-    window.showWinner;
+  return;
+}
+
+const originalShowWinner =
+  window.showWinner;
 
   window.showWinner =
     function patchedShowWinner(
@@ -3671,6 +3740,180 @@ function patchChallengeGameSync() {
 
       return originalResult;
     };
+
+  window.showWinner.__challengeRankedPatched =
+    true;
+
+  window.__challengeShowWinnerPatched =
+    true;
+}
+
+function bindRankedResultFallback() {
+  if (window.__rankedResultFallbackBound) {
+    return;
+  }
+
+  const statusEl =
+    document.getElementById("status");
+
+  if (!statusEl) {
+    return;
+  }
+
+  window.__rankedResultFallbackBound =
+    true;
+
+  const processRankedResultFromStatus =
+    () => {
+      if (
+        !isRankedChallengeActive() ||
+        hasChallengeRoundBeenApplied()
+      ) {
+        return;
+      }
+
+      const statusText =
+        String(
+          statusEl.textContent || ""
+        ).trim();
+
+      const match =
+        statusText.match(
+          /(?:🎉\s*)?(.+?)\s+wins the game!/i
+        );
+
+      if (!match) {
+        return;
+      }
+
+      const winnerName =
+        String(
+          match[1] || ""
+        ).trim();
+
+      const humanName =
+        String(
+          pagePlayerNameInput?.value?.trim() ||
+          getStoredChallengePlayerName()
+        ).trim();
+
+      const firstPlayer =
+        pageFirstPlayerSelect
+          ? pageFirstPlayerSelect.value
+          : getStoredChallengeFirstPlayer();
+
+      const aiStarted =
+        firstPlayer === "ai";
+
+      const level =
+        normalizeLevel(
+          pageAiLevelSelect
+            ? pageAiLevelSelect.value
+            : getStoredChallengeAiLevel()
+        );
+
+      const winner =
+        winnerName.toLowerCase();
+
+      const human =
+        humanName.toLowerCase();
+
+      const humanWon =
+        winner === human ||
+        (
+          !aiStarted &&
+          winner === "black"
+        ) ||
+        (
+          aiStarted &&
+          winner === "white"
+        );
+
+      const aiWon =
+        winner === "ai" ||
+        (
+          !aiStarted &&
+          winner === "white"
+        ) ||
+        (
+          aiStarted &&
+          winner === "black"
+        );
+
+      if (
+        !humanWon &&
+        !aiWon
+      ) {
+        console.warn(
+          "⚠️ Ranked result fallback could not identify winner:",
+          {
+            winnerName,
+            humanName,
+            firstPlayer
+          }
+        );
+
+        return;
+      }
+
+      /*
+       * Une seule fois par partie.
+       */
+      markChallengeRoundApplied();
+
+      window.__rankedChallengeRoundFinished =
+        true;
+
+      if (humanWon) {
+        console.log(
+          "🏆 Ranked victory detected from status"
+        );
+
+        handleWin({
+          aiStarted,
+          onlineGame: false,
+          fastWin: false,
+          aiLevel: level
+        });
+      } else {
+        console.log(
+          "❌ Ranked defeat detected from status"
+        );
+
+        handleLoss({
+          onlineGame: false,
+          aiLevel: level
+        });
+      }
+
+      /*
+       * Après une partie Ranked :
+       * Play Again doit être disponible,
+       * mais jamais Restart pendant la partie.
+       */
+      if (pageResetButton) {
+        pageResetButton.textContent =
+          "Play Again";
+      }
+
+      updateRankedChallengeRestartVisibility();
+    };
+
+  const observer =
+    new MutationObserver(
+      processRankedResultFromStatus
+    );
+
+  observer.observe(
+    statusEl,
+    {
+      childList: true,
+      characterData: true,
+      subtree: true
+    }
+  );
+
+  processRankedResultFromStatus();
 }
 
 /* =========================
@@ -3808,14 +4051,19 @@ function bindChallengePageControls() {
       true;
 
     document.addEventListener(
-      "click",
-      (event) => {
-        const button =
-          event.target.closest("button");
+  "click",
+  (event) => {
 
-        if (!button) {
-          return;
-        }
+    if (!event.isTrusted) {
+      return;
+    }
+
+    const button =
+      event.target.closest("button");
+
+    if (!button) {
+      return;
+    }
 
         const text =
           String(
@@ -4111,28 +4359,24 @@ function bindChallengePageControls() {
    * seul le bouton Ranked Challenge le fait.
    */
   if (pageModeSelect) {
-    pageModeSelect.addEventListener(
-      "change",
-      () => {
-        if (
-          pageModeSelect.value !==
-          "challenge"
-        ) {
-          setRankedChallengeActive(
-            false
-          );
+  pageModeSelect.addEventListener(
+    "change",
+    () => {
+      const mode =
+        pageModeSelect.value;
 
-          if (
-            pageModeSelect.value ===
-            "ai"
-          ) {
-            restoreNormalAiSettings();
-          }
-        }
-      },
-      true
-    );
-  }
+      if (
+        mode !== "challenge" &&
+        mode !== "ai"
+      ) {
+        setRankedChallengeActive(
+          false
+        );
+      }
+    },
+    true
+  );
+}
 
   if (
     isStandaloneChallengePage &&
@@ -4885,6 +5129,7 @@ document.addEventListener(
      * Ranked Challenge.
      */
     patchChallengeGameSync();
+    bindRankedResultFallback();
 
     /*
      * Installer la protection Restart.

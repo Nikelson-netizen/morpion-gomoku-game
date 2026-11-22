@@ -916,30 +916,67 @@ if (
   // Afficher une annonce de test après deux parties
 if (total % 2 === 0) {
   if (window.GomokuAds?.available) {
-    void (async () => {
+
+    const adPromise = (async () => {
       try {
         if (!window.GomokuAds.interstitialReady) {
-          console.log("[AdMob] Chargement de l'annonce...");
+          console.log(
+            "[AdMob] Chargement de l'annonce..."
+          );
 
           const loaded =
-            await window.GomokuAds.prepareTestInterstitial();
+            await window.GomokuAds
+              .prepareTestInterstitial();
 
           if (!loaded) {
-            console.log("[AdMob] Chargement impossible");
+            console.log(
+              "[AdMob] Chargement impossible"
+            );
+
             return;
           }
         }
 
-        console.log("[AdMob] Affichage de l'annonce");
+        console.log(
+          "[AdMob] Affichage de l'annonce"
+        );
 
-        await window.GomokuAds.showTestInterstitial();
+        await window.GomokuAds
+          .showTestInterstitial();
+
+        console.log(
+          "[AdMob] Annonce terminée"
+        );
 
       } catch (error) {
-        console.error("[AdMob] Erreur :", error);
+        console.error(
+          "[AdMob] Erreur :",
+          error
+        );
       }
     })();
+
+    /*
+     * Challenge.js pourra attendre
+     * que cette annonce soit terminée.
+     */
+    window.__gomokuInterstitialPromise =
+      adPromise;
+
+    adPromise.finally(() => {
+      if (
+        window.__gomokuInterstitialPromise ===
+        adPromise
+      ) {
+        window.__gomokuInterstitialPromise =
+          null;
+      }
+    });
+
   } else {
-    console.log("[AdMob] Plugin AdMob indisponible");
+    console.log(
+      "[AdMob] Plugin AdMob indisponible"
+    );
   }
 }
 }
