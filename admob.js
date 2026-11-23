@@ -28,6 +28,49 @@ ready: isIOSApp,
 
     interstitialReady: isIOSApp,
 
+    _interstitialClosePromise: null,
+_resolveInterstitialClose: null,
+
+_createInterstitialClosePromise() {
+  if (this._interstitialClosePromise) {
+    return this._interstitialClosePromise;
+  }
+
+  this._interstitialClosePromise =
+    new Promise((resolve) => {
+      this._resolveInterstitialClose =
+        resolve;
+    });
+
+  return this._interstitialClosePromise;
+},
+
+_finishInterstitialWait(result = true) {
+  const resolve =
+    this._resolveInterstitialClose;
+
+  this._resolveInterstitialClose = null;
+  this._interstitialClosePromise = null;
+
+  if (resolve) {
+    resolve(result);
+  }
+},
+
+_notifyInterstitialClosed() {
+  console.log(
+    "[AdMob] Annonce réellement fermée"
+  );
+
+  this._finishInterstitialWait(true);
+
+  window.dispatchEvent(
+    new Event(
+      "gomokuInterstitialClosed"
+    )
+  );
+},
+
   testAdId: "ca-app-pub-3940256099942544/1033173712",
 
   productionAdId: "ca-app-pub-1324909808984599/9759639125",
@@ -53,19 +96,67 @@ ready: isIOSApp,
   },
 
   async showTestInterstitial() {
-    if (isIOSApp) {
-  window.webkit.messageHandlers
-    .admobInterstitial
-    .postMessage("show");
 
-  console.log(
-    "[AdMob iOS] Affichage demandé"
-  );
+  /*
+   * Créer AVANT l'affichage une promesse
+   * qui ne sera terminée qu'à la fermeture
+   * réelle de l'annonce.
+   */
+  const closePromise =
+    this._createInterstitialClosePromise();
 
-  return true;
-}
-  if (!admob || !this.ready || !this.interstitialReady) {
-    console.log("[AdMob] Aucune annonce prête");
+  /*
+   * =========================
+   * iOS
+   * =========================
+   */
+  if (isIOSApp) {
+    try {
+      window.webkit.messageHandlers
+        .admobInterstitial
+        .postMessage("show");
+
+      console.log(
+        "[AdMob iOS] Affichage demandé — attente fermeture"
+      );
+
+      const closed =
+        await closePromise;
+
+      return closed;
+
+    } catch (error) {
+      console.error(
+        "[AdMob iOS] Erreur :",
+        error
+      );
+
+      this._finishInterstitialWait(
+        false
+      );
+
+      return false;
+    }
+  }
+
+  /*
+   * =========================
+   * Android
+   * =========================
+   */
+  if (
+    !admob ||
+    !this.ready ||
+    !this.interstitialReady
+  ) {
+    console.log(
+      "[AdMob] Aucune annonce prête"
+    );
+
+    this._finishInterstitialWait(
+      false
+    );
+
     return false;
   }
 
@@ -73,15 +164,34 @@ ready: isIOSApp,
 
   try {
     await admob.showInterstitial({
-     adId: this.productionAdId
+      adId: this.productionAdId
     });
 
-    console.log("[AdMob] Affichage demandé");
-    return true;
+    console.log(
+      "[AdMob] Affichage demandé — attente fermeture"
+    );
+
+    /*
+     * IMPORTANT :
+     * on attend interstitialAdDismissed.
+     */
+    const closed =
+      await closePromise;
+
+    return closed;
 
   } catch (error) {
-    console.error("[AdMob] Erreur d'affichage :", error);
+    console.error(
+      "[AdMob] Erreur d'affichage :",
+      error
+    );
+
+    this._finishInterstitialWait(
+      false
+    );
+
     await this.prepareTestInterstitial();
+
     return false;
   }
 },
@@ -112,12 +222,19 @@ ready: isIOSApp,
           return false;
         }
 
-        await admob.initialize();
+        await admob.addListener(
+  "interstitialAdDismissed",
+  () => {
 
-        await admob.addListener("interstitialAdDismissed", () => {
-  console.log("[AdMob] Annonce fermée");
-  void this.prepareTestInterstitial();
-});
+    /*
+     * C'est ICI que l'annonce Android
+     * est réellement fermée.
+     */
+    this._notifyInterstitialClosed();
+
+    void this.prepareTestInterstitial();
+  }
+);
 
         this.ready = true;
 console.log("[AdMob] Initialisation réussie");
@@ -131,6 +248,17 @@ return true;
         return false;
       }
     }
+  };
+
+  window.gomokuIOSInterstitialDismissed =
+  function () {
+
+    console.log(
+      "[AdMob iOS] Annonce fermée"
+    );
+
+    window.GomokuAds
+      ?._notifyInterstitialClosed();
   };
 
   window.GomokuAds.initialize();
