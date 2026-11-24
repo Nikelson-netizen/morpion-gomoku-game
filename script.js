@@ -910,11 +910,11 @@ if (
 
   console.log(
     `[AdMob] Partie ${total} terminée. ` +
-    (total % 2 === 0 ? "Annonce prévue" : "Pas d'annonce")
+    (total % 3 === 0 ? "Annonce prévue" : "Pas d'annonce")
   );
 
-  // Afficher une annonce de test après deux parties
-if (total % 2 === 0) {
+  // Afficher une annonce après trois parties
+if (total % 3 === 0) {
   if (window.GomokuAds?.available) {
 
     const adPromise = (async () => {
@@ -1489,7 +1489,7 @@ function forceHomeToolsDisplay() {
     document.getElementById("challengeType");
 
     if (!challengeTypeSelect.value) {
-  challengeTypeSelect.value = "free";
+  challengeTypeSelect.value = "ranked";
 }
 
   const isRanked =
@@ -3587,7 +3587,7 @@ modeSelect.addEventListener("change", () => {
   const challengeTypeSelect = document.getElementById("challengeType");
 
   if (challengeTypeSelect) {
-    challengeTypeSelect.value = "free";
+    challengeTypeSelect.value = "ranked";
   }
 
   challengeSessionActive = false;
@@ -3728,11 +3728,11 @@ if (playerNameGroup) {
 }
 
 if (modeSelect?.value === "challenge") {
-  selectChallengeType("free");
+  selectChallengeType("ranked");
 }
 
 challengeFreeBtn?.addEventListener("click", () => {
-  selectChallengeType("free");
+  selectChallengeType("ranked");
 });
 
 challengeRankedBtn?.addEventListener("click", () => {
@@ -3884,7 +3884,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("challengeType");
 
   if (challengeTypeSelect) {
-    challengeTypeSelect.value = "free";
+    challengeTypeSelect.value = "ranked";
   }
 
   challengeSessionActive = false;

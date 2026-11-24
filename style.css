@@ -2314,3 +2314,23 @@ body.mode-challenge:has(#challengeType option[value="free"]:checked)
       0 5px 16px rgba(255, 193, 7, 0.55);
   }
 }
+
+/* =========================================
+   TEMPORAIREMENT : RANKED CHALLENGE SEULEMENT
+========================================= */
+
+/* Cacher Play vs AI */
+#challengeFreeBtn {
+  display: none !important;
+}
+
+/* Cacher AI Level */
+#aiLevel,
+#aiLevelGroup {
+  display: none !important;
+}
+
+/* Cacher le sélecteur interne Free / Ranked s'il est visible */
+#challengeType {
+  display: none !important;
+}
