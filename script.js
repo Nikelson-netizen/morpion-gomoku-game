@@ -221,26 +221,27 @@ function getTypedPlayerName() {
 
 function isAndroidApp() {
   try {
-    if (
-      window.Capacitor &&
-      typeof window.Capacitor.isNativePlatform === "function" &&
-      window.Capacitor.isNativePlatform()
-    ) {
+    if (window.Capacitor?.isNativePlatform?.()) {
+      return true;
+    }
+
+    if (window.webkit?.messageHandlers?.admobInterstitial) {
       return true;
     }
   } catch (e) {}
 
   const params = new URLSearchParams(window.location.search);
-  return params.get("app") === "android";
+
+  return ["android", "ios"].includes(params.get("app"));
 }
 
 function loadAdSenseForWeb() {
   if (isAndroidApp()) {
-    console.log("Android app detected: AdSense disabled.");
+    console.log("Native app detected: AdSense disabled.");
     return;
   }
 
-  if (document.querySelector('script[data-gomoku-adsense="true"]')) {
+  if (document.querySelector('script[src*="pagead/js/adsbygoogle.js"]')) {
     return;
   }
 
@@ -254,6 +255,10 @@ function loadAdSenseForWeb() {
 
   document.head.appendChild(adsScript);
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadAdSenseForWeb();
+});
 
 function isChallengeModeActive() {
   return modeSelect?.value === "challenge";
